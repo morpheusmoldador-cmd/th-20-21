@@ -42,3 +42,253 @@
         input, select { background: #000; border: 1px solid #444; color: #fff; padding: 8px; }
 
         .container-graficos { width: 100%; max-width: 1100px; }
+        .grafico-box { margin-bottom: 60px; border-left: 2px solid var(--neon-green); padding-left: 15px; }
+        
+        canvas { background: #000; border: 1px solid #1a1a1a; width: 100%; cursor: crosshair; }
+        
+        #tela-resumo {
+            display: none; width: 100%; max-width: 800px; text-align: center;
+            background: #111; padding: 40px; border: 1px solid var(--neon-green);
+        }
+
+        h1 { font-size: 22px; letter-spacing: 3px; text-align: center; }
+        h3 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+
+<h1>SISTEMA DE EVOLUÇÃO DE OBRA</h1>
+
+<div class="menu-principal">
+    <button onclick="setMenu('Terraplanagem')" id="m-Terraplanagem" class="active">Terraplanagem</button>
+    <button onclick="setMenu('Drenagem')" id="m-Drenagem">Drenagem</button>
+    <button onclick="setMenu('Obras de Artes')" id="m-Obras">Obras de Artes</button>
+    <button onclick="setMenu('Pavimentação')" id="m-Pavimentação">Pavimentação</button>
+    <button onclick="setMenu('Sinalização')" id="m-Sinalização">Sinalização</button>
+    <button onclick="abrirResumo()" class="btn-resumo" id="btn-resumo-toggle">RESUMO %</button>
+</div>
+
+<div id="sub-menu-container" class="sub-menu">
+    <button onclick="setSub('th20')" id="btn-th20" class="active">th-20</button>
+    <button onclick="setSub('th21')" id="btn-th21">th-21</button>
+</div>
+
+<div id="painel-input" class="controles">
+    <select id="sel-secao">
+        <option value="Duplicação">Duplicação</option>
+        <option value="Marginal Norte">Marginal Norte</option>
+        <option value="Marginal Sul">Marginal Sul</option>
+    </select>
+    <input type="number" id="est-ini" placeholder="Estaca Inicial">
+    <input type="number" id="est-fim" placeholder="Estaca Final">
+    <select id="sel-serv">
+        <option value="0">Limpeza</option>
+        <option value="1">Compensação Lateral</option>
+        <option value="2">Corte</option>
+        <option value="3">Aterro</option>
+    </select>
+    <select id="sel-cor">
+        <option value="#ffff00">Em Andamento (Amarelo)</option>
+        <option value="#00ff41">Exec. Este Mês (Verde)</option>
+        <option value="#0000ff">Exec. Mês Passado (Azul)</option>
+        <option value="#ffffff">Limpar / Falta Executar (Branco)</option>
+    </select>
+    <button onclick="salvarProgresso()">ATUALIZAR</button>
+</div>
+
+<div id="tela-graficos" class="container-graficos"></div>
+
+<div id="tela-resumo">
+    <h2>RELATÓRIO DE PROGRESSO</h2>
+    <div style="width: 350px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
+    <div id="estatisticas-texto" style="margin-top: 30px; font-size: 20px;"></div>
+</div>
+
+<script>
+    let menuAtivo = 'Terraplanagem';
+    let subAtivo = 'th20';
+    let modoResumo = false;
+
+    const configs = {
+        th20: {
+            "Duplicação": [ {min: 20000, max: 20737}, {min: 21000, max: 21028} ],
+            "Marginal Norte": [ {min: 0, max: 101} ],
+            "Marginal Sul": [ {min: 0, max: 100} ]
+        },
+        th21: {
+            "Duplicação": [ {min: 21000, max: 21791} ],
+            "Marginal Norte": [ {min: 5, max: 101} ],
+            "Marginal Sul": [ {min: 0, max: 100} ]
+        }
+    };
+
+    const servicosLabels = ["Limpeza", "Compensação", "Corte", "Aterro"];
+    const db = { th20: {}, th21: {} };
+
+    function initDB() {
+        ['th20', 'th21'].forEach(th => {
+            Object.keys(configs[th]).forEach(sec => {
+                db[th][sec] = [[], [], [], []];
+            });
+        });
+    }
+
+    function setMenu(m) { menuAtivo = m; modoResumo = false; render(); }
+    function setSub(s) { subAtivo = s; render(); }
+    function abrirResumo() { modoResumo = true; render(); gerarCalculoResumo(); }
+
+    function salvarProgresso() {
+        const sec = document.getElementById('sel-secao').value;
+        const ini = parseInt(document.getElementById('est-ini').value);
+        const fim = parseInt(document.getElementById('est-fim').value);
+        const sIdx = document.getElementById('sel-serv').value;
+        const cor = document.getElementById('sel-cor').value;
+        if(isNaN(ini) || isNaN(fim)) return;
+        for (let i = ini; i <= fim; i++) db[subAtivo][sec][sIdx][i] = cor;
+        render();
+    }
+
+    function render() {
+        const container = document.getElementById('tela-graficos');
+        const telaResumo = document.getElementById('tela-resumo');
+        
+        // Atualizar classes dos botões
+        document.querySelectorAll('.menu-principal button').forEach(b => b.classList.toggle('active', !modoResumo && b.innerText === menuAtivo));
+        document.getElementById('btn-resumo-toggle').classList.toggle('active', modoResumo);
+        document.getElementById('btn-th20').classList.toggle('active', subAtivo === 'th20');
+        document.getElementById('btn-th21').classList.toggle('active', subAtivo === 'th21');
+
+        if (modoResumo) {
+            container.style.display = 'none';
+            telaResumo.style.display = 'block';
+            return;
+        }
+
+        container.style.display = 'block';
+        telaResumo.style.display = 'none';
+        container.innerHTML = '';
+
+        if (menuAtivo === 'Terraplanagem') {
+            Object.keys(configs[subAtivo]).forEach(sec => {
+                const box = document.createElement('div');
+                box.className = 'grafico-box';
+                box.innerHTML = `<h3>${sec.toUpperCase()}</h3><canvas id="canvas-${sec}" width="1050" height="280"></canvas>`;
+                container.appendChild(box);
+                desenharGrafico(sec);
+            });
+        }
+    }
+
+    function desenharGrafico(sec) {
+        const canvas = document.getElementById(`canvas-${sec}`);
+        const ctx = canvas.getContext('2d');
+        const ranges = configs[subAtivo][sec];
+        
+        const minGeral = Math.min(...ranges.map(r => r.min));
+        const maxGeral = Math.max(...ranges.map(r => r.max));
+        const totalEstacas = maxGeral - minGeral;
+
+        const margemEsq = 150;
+        const margemTopo = 40;
+        const areaUtil = canvas.width - margemEsq - 40;
+
+        // 1. Desenhar Números das Estacas (Régua)
+        ctx.fillStyle = "#888";
+        ctx.font = "9px Arial";
+        const passo = totalEstacas > 200 ? 50 : 10; // Ajusta densidade dos números
+        for (let e = minGeral; e <= maxGeral; e++) {
+            if (e % passo === 0 || e === minGeral || e === maxGeral) {
+                const x = margemEsq + ((e - minGeral) / totalEstacas) * areaUtil;
+                ctx.fillText(e, x - 10, margemTopo - 10);
+                ctx.strokeStyle = "#222";
+                ctx.beginPath(); ctx.moveTo(x, margemTopo - 5); ctx.lineTo(x, canvas.height - 20); ctx.stroke();
+            }
+        }
+
+        // 2. Desenhar as Barras de Serviço
+        servicosLabels.forEach((label, i) => {
+            const y = margemTopo + (i * 50);
+            ctx.fillStyle = "#fff";
+            ctx.font = "11px Courier New";
+            ctx.fillText(label, 10, y + 20);
+
+            // Fundo da trilha
+            ctx.fillStyle = "#111";
+            ctx.fillRect(margemEsq, y, areaUtil, 30);
+
+            const larguraEstaca = areaUtil / (totalEstacas + 1);
+
+            // Desenhar apenas estacas alimentadas
+            for (let estaca = minGeral; estaca <= maxGeral; estaca++) {
+                const cor = db[subAtivo][sec][i][estaca];
+                const x = margemEsq + ((estaca - minGeral) / totalEstacas) * areaUtil;
+                
+                if (cor && cor !== "#ffffff") {
+                    ctx.fillStyle = cor;
+                    ctx.fillRect(x, y, Math.ceil(larguraEstaca), 30);
+                } else {
+                    // Contorno sutil para estacas vazias
+                    ctx.strokeStyle = "#1a1a1a";
+                    ctx.strokeRect(x, y, larguraEstaca, 30);
+                }
+            }
+        });
+
+        // Interação Mouse
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const tip = document.getElementById('tooltip');
+
+            if (mx > margemEsq && mx < margemEsq + areaUtil) {
+                const estacaHover = Math.round(((mx - margemEsq) / areaUtil) * totalEstacas + minGeral);
+                const sIdx = Math.floor((my - margemTopo) / 50);
+
+                if (sIdx >= 0 && sIdx < 4) {
+                    tip.style.display = 'block';
+                    tip.style.left = e.pageX + 15 + 'px';
+                    tip.style.top = e.pageY + 15 + 'px';
+                    const statusCor = db[subAtivo][sec][sIdx][estacaHover] || "Não Iniciado";
+                    tip.innerHTML = `ESTACA: ${estacaHover}<br>SERVIÇO: ${servicosLabels[sIdx]}`;
+                    return;
+                }
+            }
+            tip.style.display = 'none';
+        };
+    }
+
+    function gerarCalculoResumo() {
+        let d = { and: 0, mes: 0, ant: 0, total: 0 };
+        ['th20', 'th21'].forEach(th => {
+            Object.keys(configs[th]).forEach(sec => {
+                configs[th][sec].forEach(r => d.total += (r.max - r.min + 1) * 4);
+                db[th][sec].forEach(srv => srv.forEach(c => {
+                    if (c === '#ffff00') d.and++;
+                    else if (c === '#00ff41') d.mes++;
+                    else if (c === '#0000ff') d.ant++;
+                }));
+            });
+        });
+        const conc = d.mes + d.ant;
+        const perc = ((conc / d.total) * 100).toFixed(2);
+        const ctx = document.getElementById('chartPizza').getContext('2d');
+        if (window.pCh) window.pCh.destroy();
+        window.pCh = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Em Andamento', 'Este Mês', 'Mês Passado', 'Faltante'],
+                datasets: [{ data: [d.and, d.mes, d.ant, d.total - (conc + d.and)], backgroundColor: ['#ffff00', '#00ff41', '#0000ff', '#222'], borderColor: '#000' }]
+            },
+            options: { plugins: { legend: { labels: { color: '#00ff41' } } } }
+        });
+        document.getElementById('estatisticas-texto').innerHTML = `TOTAL CONCLUÍDO: <span style="color:#00ff41">${perc}%</span>`;
+    }
+
+    initDB();
+    render();
+</script>
+</body>
+</html>
