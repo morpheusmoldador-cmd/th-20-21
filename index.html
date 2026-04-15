@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Evolução de Obra | Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #000;
+            color: #00ff41; /* Verde neon clássico */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #00ff41;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        h2 { text-transform: uppercase; letter-spacing: 2px; }
+
+        .input-group {
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        input, select {
+            background: #111;
+            border: 1px solid #00ff41;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        button:hover { background: #00cc33; }
+
+        canvas { margin-top: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Progresso de Estaqueamento</h2>
+    
+    <div class="input-group">
+        <input type="number" id="inicio" placeholder="Estaca Inicial">
+        <input type="number" id="fim" placeholder="Estaca Final">
+        <select id="status">
+            <option value="andamento">Em Andamento (Amarelo)</option>
+            <option value="esteMes">Executado este mês (Verde)</option>
+            <option value="mesPassado">Executado mês passado (Azul)</option>
+        </select>
+        <button onclick="atualizarGrafico()">Atualizar Gráfico</button>
+    </div>
+
+    <canvas id="graficoObra"></canvas>
+</div>
+
+<script>
+    // Configuração Inicial
+    const totalEstacas = 100; // Exemplo de total da obra
+    const ctx = document.getElementById('graficoObra').getContext('2d');
+    
+    let dados = {
+        labels: ['Status das Estacas'],
+        datasets: [
+            { label: 'Em Andamento', data: [0], backgroundColor: '#ffff00' },
+            { label: 'Executado este Mês', data: [0], backgroundColor: '#00ff41' },
+            { label: 'Executado Mês Passado', data: [0], backgroundColor: '#0000ff' },
+            { label: 'Faltante', data: [totalEstacas], backgroundColor: '#ffffff' }
+        ]
+    };
+
+    const config = {
+        type: 'bar',
+        data: dados,
+        options: {
+            indexAxis: 'y', // Gráfico horizontal
+            scales: {
+                x: { stacked: true, max: totalEstacas, ticks: { color: '#00ff41' } },
+                y: { stacked: true, ticks: { color: '#00ff41' } }
+            },
+            plugins: {
+                legend: { labels: { color: '#00ff41' } }
+            }
+        }
+    };
+
+    let meuGrafico = new Chart(ctx, config);
+
+    function atualizarGrafico() {
+        const inicio = parseInt(document.getElementById('inicio').value);
+        const fim = parseInt(document.getElementById('fim').value);
+        const status = document.getElementById('status').value;
+        const qtd = fim - inicio + 1;
+
+        if (status === 'andamento') dados.datasets[0].data[0] = qtd;
+        if (status === 'esteMes') dados.datasets[1].data[0] = qtd;
+        if (status === 'mesPassado') dados.datasets[2].data[0] = qtd;
+
+        // Calcula o que sobra para o branco
+        const executado = dados.datasets[0].data[0] + dados.datasets[1].data[0] + dados.datasets[2].data[0];
+        dados.datasets[3].data[0] = totalEstacas - executado;
+
+        meuGrafico.update();
+    }
+</script>
+
+</body>
+</html>
