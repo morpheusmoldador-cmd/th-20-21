@@ -2,282 +2,96 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evolução de Obra | Tech-Black</title>
+    <title>Evolução de Obra | Inteligência Geotécnica</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --neon-green: #00ff41;
-            --bg-black: #050505;
-            --input-bg: #111;
-        }
-
+        :root { --neon-green: #00ff41; --bg-black: #050505; }
         body {
             background-color: var(--bg-black);
             color: var(--neon-green);
             font-family: 'Courier New', monospace;
-            margin: 0;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 0;
         }
 
-        .menu-principal, .sub-menu {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+        /* Tooltip Style */
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 255, 65, 0.9);
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
         }
 
+        .menu-nav { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        
         button {
             background: transparent;
             border: 1px solid var(--neon-green);
             color: var(--neon-green);
-            padding: 8px 15px;
+            padding: 10px 20px;
             cursor: pointer;
             text-transform: uppercase;
-            font-weight: bold;
-            transition: 0.3s;
         }
 
-        button:hover, button.active {
-            background: var(--neon-green);
-            color: #000;
-        }
+        button:hover, button.active { background: var(--neon-green); color: #000; }
 
+        .dashboard { max-width: 1100px; margin: 0 auto; }
+        
         .controles {
             background: #111;
             padding: 20px;
-            border-radius: 5px;
             border: 1px solid #333;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
-            width: 100%;
-            max-width: 900px;
             margin-bottom: 20px;
         }
 
-        .campo { display: flex; flex-direction: column; gap: 5px; }
-        
-        input, select {
-            background: #000;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 8px;
+        input, select { background: #000; border: 1px solid #444; color: #fff; padding: 8px; }
+
+        .resumo-container {
+            display: none;
+            text-align: center;
+            background: #111;
+            padding: 30px;
+            border: 1px solid var(--neon-green);
         }
 
-        .container-graficos {
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        .grafico-box {
-            margin-bottom: 40px;
-            border-left: 2px solid var(--neon-green);
-            padding-left: 15px;
-        }
-
-        canvas {
-            background: #000;
-            border: 1px solid #222;
-            width: 100%;
-            height: 250px;
-            margin-top: 10px;
-        }
-
-        h3 { margin: 5px 0; color: #fff; border-bottom: 1px solid #333; }
+        canvas { cursor: crosshair; }
+        .chart-wrapper { margin-bottom: 50px; position: relative; }
+        h2, h3 { text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
-    <h1>SISTEMA DE EVOLUÇÃO DE OBRA</h1>
+<div id="tooltip"></div>
 
-    <div class="menu-principal">
-        <button onclick="setMenu('Terraplanagem')" class="active">Terraplanagem</button>
-        <button onclick="setMenu('Drenagem')">Drenagem</button>
-        <button onclick="setMenu('Obras de Artes')">Obras de Artes</button>
-        <button onclick="setMenu('Pavimentação')">Pavimentação</button>
-        <button onclick="setMenu('Sinalização')">Sinalização</button>
+<div class="dashboard">
+    <div class="menu-nav">
+        <button onclick="mudarTab('obra')" id="btn-obra" class="active">Evolução da Obra</button>
+        <button onclick="mudarTab('resumo')" id="btn-resumo">Gerar Resumo %</button>
     </div>
 
-    <div class="sub-menu">
-        <button onclick="setSubMenu('th20')" id="btn-th20" class="active">TH-20</button>
-        <button onclick="setSubMenu('th21')" id="btn-th21">TH-21</button>
-    </div>
+    <div id="tela-obra">
+        <div class="menu-nav" style="border-bottom: 1px solid #222; padding-bottom: 10px;">
+            <button onclick="setSub('th20')" id="st-th20" class="active">TH-20</button>
+            <button onclick="setSub('th21')" id="st-th21">TH-21</button>
+        </div>
 
-    <div class="controles">
-        <div class="campo">
-            <label>Sub-Seção:</label>
-            <select id="secao-select">
+        <div class="controles">
+            <select id="sel-secao">
                 <option value="Duplicação">Duplicação</option>
                 <option value="Marginal Norte">Marginal Norte</option>
                 <option value="Marginal Sul">Marginal Sul</option>
             </select>
-        </div>
-        <div class="campo">
-            <label>Estaca Inicial:</label>
-            <input type="number" id="estaca-ini">
-        </div>
-        <div class="campo">
-            <label>Estaca Final:</label>
-            <input type="number" id="estaca-fim">
-        </div>
-        <div class="campo">
-            <label>Serviço:</label>
-            <select id="servico-select">
+            <input type="number" id="est-ini" placeholder="Estaca Inicial">
+            <input type="number" id="est-fim" placeholder="Estaca Final">
+            <select id="sel-serv">
                 <option value="0">Limpeza</option>
-                <option value="1">Compensação Lateral</option>
-                <option value="2">Corte</option>
-                <option value="3">Aterro</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Status:</label>
-            <select id="status-cor">
-                <option value="#ffff00">Em Andamento (Amarelo)</option>
-                <option value="#00ff41">Exec. Este Mês (Verde)</option>
-                <option value="#0000ff">Exec. Mês Passado (Azul)</option>
-                <option value="#ffffff">Limpar / Falta Executar (Branco)</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>&nbsp;</label>
-            <button onclick="registrarProgresso()">ATUALIZAR GRÁFICO</button>
-        </div>
-    </div>
-
-    <div id="display-area" class="container-graficos">
-        </div>
-
-<script>
-    let menuAtivo = 'Terraplanagem';
-    let subMenuAtivo = 'th20';
-
-    // Banco de dados em memória para as estacas
-    // Estrutura: db[th20][Duplicação][serviço_index][numero_estaca] = cor
-    const db = { th20: {}, th21: {} };
-
-    const configEstacas = {
-        th20: {
-            "Duplicação": { min: 20000, max: 21028 }, // Simplificado para o range total
-            "Marginal Norte": { min: 0, max: 101 },
-            "Marginal Sul": { min: 0, max: 100 }
-        },
-        th21: {
-            "Duplicação": { min: 21000, max: 21791 },
-            "Marginal Norte": { min: 5, max: 101 },
-            "Marginal Sul": { min: 0, max: 100 }
-        }
-    };
-
-    const servicos = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
-
-    function initDB() {
-        ['th20', 'th21'].forEach(th => {
-            Object.keys(configEstacas[th]).forEach(secao => {
-                db[th][secao] = [[], [], [], []]; // 4 serviços
-            });
-        });
-    }
-
-    function setSubMenu(sub) {
-        subMenuAtivo = sub;
-        document.getElementById('btn-th20').classList.toggle('active', sub === 'th20');
-        document.getElementById('btn-th21').classList.toggle('active', sub === 'th21');
-        renderizarTelas();
-    }
-
-    function registrarProgresso() {
-        const secao = document.getElementById('secao-select').value;
-        const ini = parseInt(document.getElementById('estaca-ini').value);
-        const fim = parseInt(document.getElementById('estaca-fim').value);
-        const servIdx = document.getElementById('servico-select').value;
-        const cor = document.getElementById('status-cor').value;
-
-        for (let i = ini; i <= fim; i++) {
-            db[subMenuAtivo][secao][servIdx][i] = cor;
-        }
-        renderizarTelas();
-    }
-
-    function desenharGrafico(idCanvas, secao, th) {
-        const canvas = document.getElementById(idCanvas);
-        const ctx = canvas.getContext('2d');
-        const conf = configEstacas[th][secao];
-        const largura = canvas.width;
-        const altura = canvas.height;
-        
-        ctx.clearRect(0, 0, largura, altura);
-
-        const margemEsq = 150;
-        const areaDesenho = largura - margemEsq - 20;
-        const alturaLinha = 40;
-
-        servicos.forEach((serv, i) => {
-            const y = 30 + (i * 50);
-            
-            // Label do serviço
-            ctx.fillStyle = "#fff";
-            ctx.fillText(serv, 10, y + 15);
-
-            // Fundo Branco (Falta executar)
-            ctx.fillStyle = "#222"; 
-            ctx.fillRect(margemEsq, y, areaDesenho, alturaLinha);
-            ctx.strokeStyle = "#444";
-            ctx.strokeRect(margemEsq, y, areaDesenho, alturaLinha);
-
-            // Pintar as estacas gravadas
-            const totalEstacas = conf.max - conf.min;
-            const pixelPorEstaca = areaDesenho / totalEstacas;
-
-            for (let estaca = conf.min; estaca <= conf.max; estaca++) {
-                const cor = db[th][secao][i][estaca];
-                if (cor) {
-                    ctx.fillStyle = cor;
-                    const xPos = margemEsq + ((estaca - conf.min) * pixelPorEstaca);
-                    ctx.fillRect(xPos, y, Math.max(1, pixelPorEstaca), alturaLinha);
-                }
-            }
-        });
-
-        // Eixo X (Estacas)
-        ctx.fillStyle = varProp('--neon-green');
-        ctx.fillText(`Estaca: ${conf.min}`, margemEsq, altura - 5);
-        ctx.fillText(`Estaca: ${conf.max}`, largura - 80, altura - 5);
-    }
-
-    function varProp(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
-
-    function renderizarTelas() {
-        const container = document.getElementById('display-area');
-        container.innerHTML = '';
-
-        if (menuAtivo === 'Terraplanagem') {
-            const secoes = ["Duplicação", "Marginal Norte", "Marginal Sul"];
-            secoes.forEach(secao => {
-                const div = document.createElement('div');
-                div.className = 'grafico-box';
-                div.innerHTML = `<h3>${secao.toUpperCase()} - ${subMenuAtivo.toUpperCase()}</h3>
-                                 <canvas id="canv-${secao}" width="1000" height="250"></canvas>`;
-                container.appendChild(div);
-                desenharGrafico(`canv-${secao}`, secao, subMenuAtivo);
-            });
-        } else {
-            container.innerHTML = `<h2 style="text-align:center">Módulo ${menuAtivo} em desenvolvimento...</h2>`;
-        }
-    }
-
-    function setMenu(menu) {
-        menuAtivo = menu;
-        document.querySelectorAll('.menu-principal button').forEach(b => {
-            b.classList.toggle('active', b.innerText === menu);
-        });
-        renderizarTelas();
-    }
-
-    initDB();
-    renderizarTelas();
-</script>
-</body>
-</html>
+                <option value="1">Comp
