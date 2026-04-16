@@ -91,14 +91,14 @@
     <div class="chart-container">
         <canvas id="chartPizza"></canvas>
     </div>
-    <div id="resumo-stats" style="margin-top:1.5rem; font-size:3.5rem; font-weight:800; color:var(--primary);">0%</div>
+    <div id="resumo-stats" style="margin-top:1.5rem; font-size:3.5rem; font-weight:800; color:var(--primary);">0,00%</div>
     <p style="color:var(--text-dim); margin-top: 5px;">Total Executado (Verde + Azul)</p>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG (INSIRA SEUS DADOS AQUI) ---
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
-          apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0",
+        apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0",
         authDomain: "obras-th20-th21.firebaseapp.com",
         databaseURL: "https://obras-th20-th21-default-rtdb.firebaseio.com",
         projectId: "obras-th20-th21",
@@ -113,15 +113,16 @@
 
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
     let db = {}; 
-    let chartInstance = null; // Para controlar o gráfico de pizza
+    let chartInstance = null;
 
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
         Aterro: ["3ª Camada CFT", "2ª Camada CFT", "1ª Camada CFT", ...Array.from({length: 20}, (_, i) => `${20-i}ª Camada`), "Fundo"],
-        Drenagem: ["Escavação", "Berço", "Assentamento", "Reaterro"],
-        Pavimentação: ["Sub-Leito", "Sub-Base", "Base", "Capa Asfáltica"],
-        OAE: ["Fundação", "Manto/Pilares", "Vigas", "Laje"],
-        Sinalização: ["Vertical", "Horizontal", "Defensas", "Tachões"]
+        // ORDEM DE DRENAGEM AJUSTADA (Reaterro no topo, Escavação na base)
+        Drenagem: ["Reaterro", "Caixa", "Ala", "Tubos", "Contra-berço", "Berço", "Escavação"],
+        Pavimentação: ["Capa Asfáltica", "Base", "Sub-Base", "Sub-Leito"],
+        OAE: ["Laje", "Vigas", "Manto/Pilares", "Fundação"],
+        Sinalização: ["Tachões", "Defensas", "Horizontal", "Vertical"]
     };
 
     const trechosConfig = {
@@ -133,6 +134,7 @@
         database.ref('obra_v3').on('value', (snapshot) => {
             db = snapshot.val() || {};
             render();
+            gerarResumo(); 
             document.getElementById('status-cloud').innerText = "☁️ Sincronizado";
         });
     }
@@ -215,7 +217,7 @@
         if(!canvas) return;
         const ctx = canvas.getContext('2d');
         const lista = abasConfig[tabAtiva];
-        canvas.width = 1200; canvas.height = tabAtiva === 'Aterro' ? 550 : 250;
+        canvas.width = 1200; canvas.height = (tabAtiva === 'Aterro' || tabAtiva === 'Drenagem') ? 550 : 250;
         const mEsq = 180, mTopo = 20, areaW = canvas.width - mEsq - 30;
         const rowH = (canvas.height - 40) / lista.length;
 
@@ -265,12 +267,11 @@
         let totalEstacasServico = 0;
         const coresAlvo = ['#10b981', '#3b82f6'];
 
-        // Percorre a estrutura de dados atual (que veio do Firebase)
         ['th20', 'th21'].forEach(th => {
             const numEstacasTrecho = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if(aba === 'Aterro') return; // Evita contagem dupla, foca na aba Principal
+                    if(aba === 'Aterro') return; 
                     const servicos = abasConfig[aba];
                     totalEstacasServico += (servicos.length * numEstacasTrecho);
                     
@@ -289,10 +290,12 @@
             });
         });
 
-        const porcentagem = totalEstacasServico > 0 ? ((executado / totalEstacasServico) * 100).toFixed(2) : 0;
-        document.getElementById('resumo-stats').innerText = `${porcentagem}%`;
+        const porcentagemRaw = totalEstacasServico > 0 ? (executado / totalEstacasServico) * 100 : 0;
+        const porcentagemFormatada = porcentagemRaw.toFixed(2).replace('.', ',');
+        
+        const statsEl = document.getElementById('resumo-stats');
+        if(statsEl) statsEl.innerText = `${porcentagemFormatada}%`;
 
-        // Renderização do Gráfico
         const canvasResumo = document.getElementById('chartPizza');
         if(!canvasResumo) return;
         const ctx = canvasResumo.getContext('2d');
