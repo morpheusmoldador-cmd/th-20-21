@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>SGO Pro - Gestão Integrada de Infraestrutura</title>
+    <title>SGO Pro - Gestão com Armazenamento Seguro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -104,9 +104,9 @@
     <div class="input-group">
         <label>Status</label>
         <select id="sel-cor">
-            <option value="#10b981">🟢 Concluído</option>
+            <option value="#10b981">🟢 Executado este mês</option>
+            <option value="#3b82f6">🔵 Executado anteriormente</option>
             <option value="#f59e0b">🟡 Em Andamento</option>
-            <option value="#3b82f6">🔵 Mês Passado</option>
             <option value="#ffffff">⚪ Limpar</option>
         </select>
     </div>
@@ -119,11 +119,13 @@
     <h2 style="margin-bottom:2rem;">Progresso Global da Obra</h2>
     <div style="width: 300px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
     <div id="resumo-stats" style="margin-top:2rem; font-size:1.8rem; font-weight:700;"></div>
+    <p style="color:var(--text-dim); margin-top: 10px;">(Soma de Executado este mês + Anteriormente)</p>
+    <button onclick="exportarBackup()" style="margin-top: 20px; background: #334155; color: white; border: none; padding: 10px; border-radius: 5px;">Baixar Backup dos Dados</button>
 </div>
 
 <script>
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
-    const db = { th20: {}, th21: {} };
+    let db = { th20: {}, th21: {} };
     
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
@@ -139,15 +141,40 @@
         th21: { kmIni: 303, kmFim: 319, estIni: 21029, estFim: 21791 }
     };
 
-    function init() {
-        ['th20', 'th21'].forEach(th => {
-            ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
-                db[th][sec] = {};
-                Object.keys(abasConfig).forEach(aba => {
-                    db[th][sec][aba] = Array.from({length: abasConfig[aba].length}, () => []);
+    // FUNÇÕES DE PERSISTÊNCIA (STORAGE)
+    function carregarDB() {
+        const salvo = localStorage.getItem('sgo_db_backup');
+        if (salvo) {
+            db = JSON.parse(salvo);
+        } else {
+            // Inicializa novo se não houver
+            ['th20', 'th21'].forEach(th => {
+                ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
+                    db[th][sec] = {};
+                    Object.keys(abasConfig).forEach(aba => {
+                        db[th][sec][aba] = Array.from({length: abasConfig[aba].length}, () => []);
+                    });
                 });
             });
-        });
+        }
+    }
+
+    function salvarNoBrowser() {
+        localStorage.setItem('sgo_db_backup', JSON.stringify(db));
+    }
+
+    function exportarBackup() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "backup_sgo_obra.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function init() {
+        carregarDB();
         atualizarSelects();
         render();
     }
@@ -157,7 +184,7 @@
         select.innerHTML = '';
         const servicos = abasConfig[tabAtiva] || [];
         servicos.forEach((s, i) => {
-            if(tabAtiva === 'Principal' && i === 3) return; // Aterro é automático
+            if(tabAtiva === 'Principal' && i === 3) return; 
             select.innerHTML += `<option value="${i}">${s}</option>`;
         });
     }
@@ -178,7 +205,6 @@
         for (let i = ini; i <= fim; i++) {
             dataObj[tabAtiva][idx][i] = cor;
             
-            // Sincronização Aterro -> Principal
             if (tabAtiva === 'Aterro') {
                 let temAlguma = dataObj.Aterro.some(c => c[i] && c[i] !== "#ffffff");
                 let cft2 = dataObj.Aterro[22][i];
@@ -187,6 +213,7 @@
                 dataObj.Principal[3][i] = statusFinal;
             }
         }
+        salvarNoBrowser(); // Salva permanentemente no navegador
         render();
     }
 
@@ -261,32 +288,51 @@
                 const est = Math.floor(((x - mEsq) / areaW) * (estMax - estMin + 1)) + estMin;
                 const row = Math.floor((y - mTopo) / rowH);
                 const idx = tabAtiva === 'Aterro' ? (lista.length - 1 - row) : row;
+                const cor = db[trechoAtivo][secaoAtiva][tabAtiva][idx][est];
+                
+                let statusHuman = "Vazio";
+                if(cor === "#10b981") statusHuman = "Executado este mês";
+                if(cor === "#3b82f6") statusHuman = "Executado anteriormente";
+                if(cor === "#f59e0b") statusHuman = "Em Andamento";
+
                 tip.style.display = 'block'; tip.style.left = evt.pageX + 10 + 'px'; tip.style.top = evt.pageY + 10 + 'px';
-                tip.innerHTML = `<strong>Estaca:</strong> ${est}<br><strong>Serviço:</strong> ${lista[idx]}`;
+                tip.innerHTML = `<strong>Estaca:</strong> ${est}<br><strong>Serviço:</strong> ${lista[idx]}<br><strong>Status:</strong> ${statusHuman}`;
             } else tip.style.display = 'none';
         };
     }
 
     function gerarResumo() {
-        let ex = 0, tot = 0;
+        let executado = 0, total = 0;
         ['th20', 'th21'].forEach(th => {
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if(aba === 'Aterro') return; // Aterro conta via aba principal
+                    if(aba === 'Aterro') return; 
                     const numServicos = abasConfig[aba].length;
                     const numEstacas = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
-                    tot += numServicos * numEstacas;
-                    db[th][sec][aba].forEach(srv => srv.forEach(c => { if(c === '#10b981' || c === '#3b82f6') ex++; }));
+                    total += numServicos * numEstacas;
+                    
+                    db[th][sec][aba].forEach(srv => {
+                        srv.forEach(cor => { 
+                            if(cor === '#10b981' || cor === '#3b82f6') executado++; 
+                        });
+                    });
                 });
             });
         });
 
-        const p = ((ex/tot)*100).toFixed(2);
+        const p = total > 0 ? ((executado/total)*100).toFixed(2) : 0;
         const ctx = document.getElementById('chartPizza').getContext('2d');
         if(window.pCh) window.pCh.destroy();
         window.pCh = new Chart(ctx, {
             type: 'doughnut',
-            data: { labels: ['Concluído', 'Pendente'], datasets: [{ data: [ex, tot - ex], backgroundColor: ['#10b981', '#1e293b'], borderColor: '#334155' }] },
+            data: { 
+                labels: ['Executado Total', 'Pendente'], 
+                datasets: [{ 
+                    data: [executado, total - executado], 
+                    backgroundColor: ['#10b981', '#1e293b'], 
+                    borderColor: '#334155' 
+                }] 
+            },
             options: { cutout: '80%', plugins: { legend: { display: false } } }
         });
         document.getElementById('resumo-stats').innerHTML = `<span style="color:var(--primary)">${p}%</span> Total Obra`;
