@@ -79,10 +79,10 @@
 <div id="tela-graficos" class="container-quilometros"></div>
 
 <div id="tela-resumo">
-    <h2 style="margin-bottom:2rem;">Progresso Global Sincronizado</h2>
+    <h2 style="margin-bottom:2rem;">Progresso Global da Obra</h2>
     <div style="width: 300px; margin: 0 auto; height: 300px;"><canvas id="chartPizza"></canvas></div>
     <div id="resumo-stats" style="margin-top:2rem; font-size:2.5rem; font-weight:700;">0%</div>
-    <p style="color:var(--text-dim); margin-top: 10px;">Somatório de Executado (Mês + Anterior)</p>
+    <p style="color:var(--text-dim); margin-top: 10px;">Somatório de Executado (Verde + Azul)</p>
 </div>
 
 <script>
@@ -102,7 +102,7 @@
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
     let db = { th20: {}, th21: {} };
     
-    // Lista de serviços organizada para renderização correta (CFT no topo, Camadas embaixo)
+    // ORDEM DAS CAMADAS: CFT no topo, Camadas descendo até o Fundo
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
         Aterro: ["3ª Camada CFT", "2ª Camada CFT", "1ª Camada CFT", ...Array.from({length: 20}, (_, i) => `${20-i}ª Camada`), "Fundo"],
@@ -141,15 +141,14 @@
         for (let i = ini; i <= fim; i++) {
             db[trechoAtivo][secaoAtiva][tabAtiva][idx][i] = cor;
             
-            // Lógica Especial Aterro -> Principal
             if (tabAtiva === 'Aterro') {
                 if(!db[trechoAtivo][secaoAtiva]['Principal']) db[trechoAtivo][secaoAtiva]['Principal'] = {};
                 if(!db[trechoAtivo][secaoAtiva]['Principal'][3]) db[trechoAtivo][secaoAtiva]['Principal'][3] = [];
                 let camadas = db[trechoAtivo][secaoAtiva]['Aterro'];
                 let temAlguma = false;
-                for(let c in camadas) { if(camadas[c][i] && camadas[c][i] !== "#ffffff") temAlguma = true; }
+                for(let c in camadas) { if(camadas[c] && camadas[c][i] && camadas[c][i] !== "#ffffff") temAlguma = true; }
                 let final = temAlguma ? "#f59e0b" : "#ffffff";
-                // Se o CFT (idx 0, 1 ou 2) estiver pronto, marca como verde na Principal
+                // Se o CFT estiver concluído (índices 0, 1 ou 2), marca verde na Principal
                 if(camadas[0] && (camadas[0][i] === "#10b981" || camadas[0][i] === "#3b82f6")) final = "#10b981";
                 db[trechoAtivo][secaoAtiva]['Principal'][3][i] = final;
             }
@@ -227,10 +226,11 @@
         let executado = 0, total = 0;
         const coresOk = ['#10b981', '#3b82f6'];
 
+        // Processa os dados locais do objeto 'db'
         ['th20', 'th21'].forEach(th => {
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if(aba === 'Aterro') return; // Usa Principal para não contar em dobro
+                    if(aba === 'Aterro') return; // Usa a Principal para contar o progresso de terraplanagem sem duplicar
                     const servicos = abasConfig[aba];
                     const numEstacas = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
                     total += servicos.length * numEstacas;
@@ -246,7 +246,8 @@
         });
 
         const p = total > 0 ? ((executado/total)*100).toFixed(2) : 0;
-        document.getElementById('resumo-stats').innerHTML = `<span style="color:var(--primary)">${p}%</span> Total Obra`;
+        document.getElementById('resumo-stats').innerText = `${p}%`;
+        document.getElementById('resumo-stats').style.color = "var(--primary)";
 
         const ctx = document.getElementById('chartPizza').getContext('2d');
         if(window.pCh) window.pCh.destroy();
