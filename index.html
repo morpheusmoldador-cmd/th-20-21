@@ -29,7 +29,7 @@
         input, select { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; }
         .container-quilometros { width: 95%; max-width: 1300px; display: grid; gap: 1.5rem; padding-bottom: 50px; }
         .km-card { background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border); padding: 1.2rem; }
-        .km-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        .km-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 0.8rem; }
         canvas { width: 100%; cursor: crosshair; }
         #tela-resumo { display: none; width: 90%; max-width: 600px; text-align: center; background: var(--bg-card); padding: 3rem; border-radius: 20px; border: 1px solid var(--border); margin: 2rem 0; }
         .sync-status { font-size: 10px; color: var(--primary); position: absolute; right: 20px; top: 20px; font-weight: bold; }
@@ -85,12 +85,11 @@
     <h2 style="margin-bottom:2rem;">Progresso Global da Obra</h2>
     <div style="width: 300px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
     <div id="resumo-stats" style="margin-top:2rem; font-size:1.8rem; font-weight:700;"></div>
-    <p style="color:var(--text-dim); margin-top: 10px;">(Soma de Executado este mês + Anteriormente)</p>
+    <p style="color:var(--text-dim); margin-top: 10px;">(Soma de Executado este mês + Executado anteriormente)</p>
 </div>
 
 <script>
     // --- CONFIGURAÇÃO FIREBASE ---
-    // Substitua os campos apiKey e appId pelos que você encontra no console do Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0", 
         authDomain: "obras-th20-th21.firebaseapp.com",
@@ -103,7 +102,6 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // --- VARIÁVEIS DE ESTADO ---
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
     let db = { th20: {}, th21: {} };
     
@@ -121,7 +119,6 @@
         th21: { kmIni: 303, kmFim: 319, estIni: 21029, estFim: 21791 }
     };
 
-    // --- SINCRONIZAÇÃO EM TEMPO REAL ---
     function escutarNuvem() {
         database.ref('obra_v3').on('value', (snapshot) => {
             const data = snapshot.val();
@@ -130,21 +127,7 @@
                 render();
                 document.getElementById('status-cloud').innerText = "☁️ Sincronizado para Todos";
                 document.getElementById('status-cloud').style.color = "var(--primary)";
-            } else {
-                inicializarDBLocal();
             }
-        });
-    }
-
-    function inicializarDBLocal() {
-        ['th20', 'th21'].forEach(th => {
-            db[th] = db[th] || {};
-            ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
-                db[th][sec] = db[th][sec] || {};
-                Object.keys(abasConfig).forEach(aba => {
-                    db[th][sec][aba] = db[th][sec][aba] || Array.from({length: abasConfig[aba].length}, () => []);
-                });
-            });
         });
     }
 
@@ -155,30 +138,30 @@
         const cor = document.getElementById('sel-cor').value;
 
         if (isNaN(ini) || isNaN(fim)) return;
-        document.getElementById('status-cloud').innerText = "⏳ Atualizando nuvem...";
 
-        // Garantir estrutura antes de gravar
-        if (!db[trechoAtivo][secaoAtiva][tabAtiva][idx]) db[trechoAtivo][secaoAtiva][tabAtiva][idx] = [];
+        if(!db[trechoAtivo]) db[trechoAtivo] = {};
+        if(!db[trechoAtivo][secaoAtiva]) db[trechoAtivo][secaoAtiva] = {};
+        if(!db[trechoAtivo][secaoAtiva][tabAtiva]) db[trechoAtivo][secaoAtiva][tabAtiva] = {};
+        if(!db[trechoAtivo][secaoAtiva][tabAtiva][idx]) db[trechoAtivo][secaoAtiva][tabAtiva][idx] = [];
 
         for (let i = ini; i <= fim; i++) {
             db[trechoAtivo][secaoAtiva][tabAtiva][idx][i] = cor;
             
-            // Lógica Aterro -> Principal
             if (tabAtiva === 'Aterro') {
-                if (!db[trechoAtivo][secaoAtiva]['Principal'][3]) db[trechoAtivo][secaoAtiva]['Principal'][3] = [];
+                if(!db[trechoAtivo][secaoAtiva]['Principal']) db[trechoAtivo][secaoAtiva]['Principal'] = {};
+                if(!db[trechoAtivo][secaoAtiva]['Principal'][3]) db[trechoAtivo][secaoAtiva]['Principal'][3] = [];
                 let camadas = db[trechoAtivo][secaoAtiva]['Aterro'];
-                let temAlguma = camadas.some(c => c && c[i] && c[i] !== "#ffffff");
+                let temAlguma = false;
+                for(let c in camadas) { if(camadas[c][i] && camadas[c][i] !== "#ffffff") temAlguma = true; }
                 let cft2 = camadas[22] ? camadas[22][i] : null;
                 let final = temAlguma ? "#f59e0b" : "#ffffff";
-                if (cft2 === "#10b981" || cft2 === "#3b82f6") final = "#10b981";
+                if(cft2 === "#10b981" || cft2 === "#3b82f6") final = "#10b981";
                 db[trechoAtivo][secaoAtiva]['Principal'][3][i] = final;
             }
         }
-        // Envia o objeto modificado para o Firebase
         database.ref('obra_v3').set(db);
     }
 
-    // --- UI E RENDERIZAÇÃO ---
     function setTab(t) { tabAtiva = t; atualizarSelects(); render(); }
     function setTrecho(tr) { trechoAtivo = tr; render(); }
     function setSecao(sc) { secaoAtiva = sc; render(); }
@@ -188,7 +171,7 @@
         select.innerHTML = '';
         const servicos = abasConfig[tabAtiva] || [];
         servicos.forEach((s, i) => {
-            if (tabAtiva === 'Principal' && i === 3) return; 
+            if(tabAtiva === 'Principal' && i === 3) return; 
             select.innerHTML += `<option value="${i}">${s}</option>`;
         });
     }
@@ -203,7 +186,7 @@
         document.getElementById(`btn-${trechoAtivo}`)?.classList.add('active');
         document.getElementById(`sec-${secaoAtiva}`)?.classList.add('active');
 
-        if (tabAtiva === 'Resumo') {
+        if(tabAtiva === 'Resumo') {
             container.style.display = 'none'; painel.style.display = 'none'; resumo.style.display = 'block';
             gerarResumo(); return;
         }
@@ -211,7 +194,7 @@
         container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
         container.innerHTML = '';
         const config = trechosConfig[trechoAtivo];
-        for (let km = config.kmIni; km <= config.kmFim; km++) {
+        for(let km = config.kmIni; km <= config.kmFim; km++) {
             const estMin = config.estIni + ((km - config.kmIni) * 50);
             const estMax = Math.min(estMin + 49, config.estFim);
             const card = document.createElement('div');
@@ -224,7 +207,7 @@
 
     function desenharKM(km, estMin, estMax) {
         const canvas = document.getElementById(`canvas-km-${km}`);
-        if (!canvas) return;
+        if(!canvas) return;
         const ctx = canvas.getContext('2d');
         const lista = abasConfig[tabAtiva];
         canvas.width = 1200; canvas.height = tabAtiva === 'Aterro' ? 550 : 250;
@@ -236,12 +219,12 @@
             const y = mTopo + (i * rowH);
             ctx.fillStyle = label.includes("CFT") ? "#a855f7" : "#f8fafc";
             ctx.font = "bold 11px Inter";
-            ctx.fillText(label, 10, y + (rowH / 1.5));
+            ctx.fillText(label, 10, y + (rowH/1.5));
             ctx.fillStyle = "#0f172a"; ctx.fillRect(mEsq, y, areaW, rowH - 4);
             const wEst = areaW / (estMax - estMin + 1);
-            for (let e = estMin; e <= estMax; e++) {
-                const cor = (db[trechoAtivo][secaoAtiva][tabAtiva][idx]) ? db[trechoAtivo][secaoAtiva][tabAtiva][idx][e] : null;
-                if (cor && cor !== "#ffffff") { ctx.fillStyle = cor; ctx.fillRect(mEsq + ((e - estMin) * wEst), y, Math.ceil(wEst), rowH - 4); }
+            for(let e = estMin; e <= estMax; e++) {
+                const cor = (db[trechoAtivo] && db[trechoAtivo][secaoAtiva] && db[trechoAtivo][secaoAtiva][tabAtiva] && db[trechoAtivo][secaoAtiva][tabAtiva][idx]) ? db[trechoAtivo][secaoAtiva][tabAtiva][idx][e] : null;
+                if(cor && cor !== "#ffffff") { ctx.fillStyle = cor; ctx.fillRect(mEsq + ((e - estMin) * wEst), y, Math.ceil(wEst), rowH - 4); }
             }
         });
     }
@@ -251,21 +234,32 @@
         ['th20', 'th21'].forEach(th => {
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if (aba === 'Aterro') return; 
+                    if(aba === 'Aterro') return; 
                     total += abasConfig[aba].length * (trechosConfig[th].estFim - trechosConfig[th].estIni + 1);
-                    const srvs = db[th][sec][aba];
-                    if (srvs) { srvs.forEach(srv => { if(srv) srv.forEach(c => { if(c === '#10b981' || c === '#3b82f6') executado++; })}); }
+                    const srvs = (db[th] && db[th][sec]) ? db[th][sec][aba] : null;
+                    if(srvs) { for(let s in srvs) { if(srvs[s]) srvs[s].forEach(c => { if(c === '#10b981' || c === '#3b82f6') executado++; }); } }
                 });
             });
         });
-        const p = total > 0 ? ((executado / total) * 100).toFixed(2) : 0;
+
+        const p = total > 0 ? ((executado/total)*100).toFixed(2) : 0;
         const ctx = document.getElementById('chartPizza').getContext('2d');
-        if (window.pCh) window.pCh.destroy();
-        window.pCh = new Chart(ctx, { type: 'doughnut', data: { labels: ['Concluído', 'Pendente'], datasets: [{ data: [executado, total - executado], backgroundColor: ['#10b981', '#1e293b'], borderColor: '#334155' }] }, options: { cutout: '80%', plugins: { legend: { display: false } } } });
+        if(window.pCh) window.pCh.destroy();
+        window.pCh = new Chart(ctx, { 
+            type: 'doughnut', 
+            data: { 
+                labels: ['Concluído', 'Pendente'], 
+                datasets: [{ 
+                    data: [executado, total - executado], 
+                    backgroundColor: ['#10b981', '#1e293b'], 
+                    borderColor: '#334155' 
+                }] 
+            }, 
+            options: { cutout: '80%', plugins: { legend: { display: false } } } 
+        });
         document.getElementById('resumo-stats').innerHTML = `<span style="color:var(--primary)">${p}%</span> Total Obra`;
     }
 
-    // Iniciar sistema
     escutarNuvem();
     atualizarSelects();
 </script>
