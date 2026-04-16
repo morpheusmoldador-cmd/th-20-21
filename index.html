@@ -2,14 +2,14 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>SGO Pro - Gestão Técnica TH-20/21</title>
+    <title>SGO Pro - Gestão com Interação Ativa</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-body: #0f172a; --bg-card: #1e293b; --primary: #10b981;
             --secondary: #3b82f6; --warning: #f59e0b; --text-main: #f8fafc;
-            --text-dim: #94a3b8; --border: #334155;
+            --text-dim: #94a3b8; --border: #334155; --cft-color: #a855f7;
         }
 
         body {
@@ -19,83 +19,64 @@
         }
 
         header {
-            width: 100%; padding: 1.5rem 0; text-align: center;
+            width: 100%; padding: 1.2rem 0; text-align: center;
             background: linear-gradient(to bottom, #1e293b, #0f172a);
             border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
         }
 
         #tooltip {
             position: absolute; background: rgba(15, 23, 42, 0.95);
-            color: white; padding: 10px; border-radius: 8px; font-size: 12px;
+            color: white; padding: 10px; border-radius: 8px; font-size: 11px;
             border: 1px solid var(--primary); pointer-events: none; display: none; z-index: 1000;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); line-height: 1.4;
         }
 
-        .nav-container { width: 90%; max-width: 1200px; margin: 2rem 0; display: flex; flex-direction: column; gap: 1rem; }
-        .menu-row { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+        .nav-container { width: 95%; max-width: 1300px; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.8rem; }
+        .menu-row { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
 
         button {
             background: var(--bg-card); border: 1px solid var(--border);
-            color: var(--text-dim); padding: 0.6rem 1rem; cursor: pointer;
-            border-radius: 8px; font-size: 0.75rem; font-weight: 600; transition: all 0.2s;
+            color: var(--text-dim); padding: 0.5rem 0.9rem; cursor: pointer;
+            border-radius: 6px; font-size: 0.7rem; font-weight: 600; transition: 0.2s;
         }
 
-        button.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
         button.btn-special { border-color: var(--warning); color: var(--warning); }
         button.btn-special.active { background: var(--warning); color: #fff; }
 
         .dashboard-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem; width: 90%; max-width: 1200px; background: var(--bg-card);
-            padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 2rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem; width: 95%; max-width: 1300px; background: var(--bg-card);
+            padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1.5rem;
         }
 
-        .input-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        label { font-size: 0.65rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }
-        input, select { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem; border-radius: 6px; }
+        .input-group { display: flex; flex-direction: column; gap: 0.3rem; }
+        label { font-size: 0.6rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }
+        input, select { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; }
 
-        .container-quilometros {
-            width: 90%; max-width: 1200px; display: grid; grid-template-columns: 1fr; gap: 2rem; padding-bottom: 50px;
-        }
-
-        .km-card {
-            background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);
-            padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-
-        .km-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;
-        }
-
-        .km-title { font-size: 1.3rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
-        .km-range { font-size: 0.85rem; color: var(--text-dim); font-weight: 500; }
-
-        canvas { width: 100%; height: 280px; }
-
-        #tela-resumo {
-            display: none; width: 90%; max-width: 600px; text-align: center;
-            background: var(--bg-card); padding: 3rem; border-radius: 20px; border: 1px solid var(--border);
-        }
+        .container-quilometros { width: 95%; max-width: 1300px; display: grid; gap: 1.5rem; padding-bottom: 50px; }
+        .km-card { background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border); padding: 1.2rem; }
+        .km-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+        
+        .km-title { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+        canvas { width: 100%; cursor: crosshair; }
     </style>
 </head>
 <body>
 
 <div id="tooltip"></div>
 
-<header>
-    <h1>CONTROLE DE INFRAESTRUTURA - TH20 / TH21</h1>
-</header>
+<header><h1>GESTÃO TÉCNICA DE INFRAESTRUTURA</h1></header>
 
 <div class="nav-container">
     <div class="menu-row">
         <button onclick="setTab('Principal')" id="tab-Principal" class="active">Terraplanagem</button>
-        <button onclick="setTab('Aterro')" id="tab-Aterro" class="btn-special">Monitoramento Aterro</button>
-        <button onclick="setTab('Drenagem')">Drenagem</button>
-        <button onclick="setTab('Resumo')" style="background:#fff; color:#000;" id="tab-Resumo">Resumo Geral %</button>
+        <button onclick="setTab('Aterro')" id="tab-Aterro" class="btn-special">Sub-Aba: Aterro & CFT</button>
+        <button onclick="setTab('Resumo')" id="tab-Resumo">Progresso Global</button>
     </div>
     <div class="menu-row">
-        <button onclick="setTrecho('th20')" id="btn-th20" class="active">TRECHO TH-20 (KM 288-302)</button>
-        <button onclick="setTrecho('th21')" id="btn-th21">TRECHO TH-21 (KM 303-319)</button>
+        <button onclick="setTrecho('th20')" id="btn-th20" class="active">TH-20 (KM 288-302)</button>
+        <button onclick="setTrecho('th21')" id="btn-th21">TH-21 (KM 303-319)</button>
     </div>
     <div class="menu-row">
         <button onclick="setSecao('Duplicação')" id="sec-Duplicação" class="active">Duplicação</button>
@@ -105,43 +86,34 @@
 </div>
 
 <div id="painel-input" class="dashboard-grid">
-    <div class="input-group"><label>Estaca Inicial</label><input type="number" id="est-ini" placeholder="Ex: 20150"></div>
-    <div class="input-group"><label>Estaca Final</label><input type="number" id="est-fim" placeholder="Ex: 20180"></div>
+    <div class="input-group"><label>Estaca Inicial</label><input type="number" id="est-ini"></div>
+    <div class="input-group"><label>Estaca Final</label><input type="number" id="est-fim"></div>
     <div class="input-group">
-        <label>Serviço</label>
-        <select id="sel-serv">
-            <option value="0">Limpeza</option>
-            <option value="1">Compensação Lateral</option>
-            <option value="2">Corte</option>
-            <option value="3">Aterro</option>
-        </select>
+        <label id="label-serv-camada">Serviço / Camada</label>
+        <select id="sel-serv-camada"></select>
     </div>
     <div class="input-group">
         <label>Status</label>
         <select id="sel-cor">
-            <option value="#f59e0b">🟡 Em Andamento</option>
-            <option value="#10b981">🟢 Exec. Este Mês</option>
-            <option value="#3b82f6">🔵 Exec. Mês Passado</option>
+            <option value="#10b981">🟢 Concluído (Verde)</option>
+            <option value="#f59e0b">🟡 Em Andamento (Amarelo)</option>
+            <option value="#3b82f6">🔵 Mês Passado (Azul)</option>
             <option value="#ffffff">⚪ Limpar</option>
         </select>
     </div>
-    <button style="background:var(--primary); color:white; font-weight:bold; margin-top:auto; height:45px; border:none;" onclick="salvarDados()">Atualizar Dados</button>
+    <button style="background:var(--primary); color:white; font-weight:bold; margin-top:auto; height:40px; border:none; border-radius:4px;" onclick="salvarDados()">Atualizar Gráficos</button>
 </div>
 
 <div id="tela-graficos" class="container-quilometros"></div>
 
-<div id="tela-resumo">
-    <h2>Progresso Consolidado</h2>
-    <div style="width: 250px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
-    <div id="resumo-stats" style="margin-top:2rem; font-size:1.5rem; font-weight:700;"></div>
-</div>
-
 <script>
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
     const db = { th20: {}, th21: {} };
-    const servicos = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
-    
-    // Configurações Técnicas de Limites
+    const servicosPrincipais = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
+    const camadasAterro = ["Fundo"];
+    for(let i=1; i<=20; i++) camadasAterro.push(`${i}ª Camada`);
+    camadasAterro.push("1ª Camada CFT", "2ª Camada CFT", "3ª Camada CFT");
+
     const trechosConfig = {
         th20: { kmIni: 288, kmFim: 302, estIni: 20000, estFim: 21028 },
         th21: { kmIni: 303, kmFim: 319, estIni: 21029, estFim: 21791 }
@@ -149,56 +121,68 @@
 
     function init() {
         ['th20', 'th21'].forEach(th => {
-            const secoes = ["Duplicação", "Marginal Norte", "Marginal Sul"];
-            secoes.forEach(sec => { db[th][sec] = [[], [], [], []]; });
+            ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
+                db[th][sec] = {
+                    principal: [[], [], [], []],
+                    aterroDetalhado: Array.from({length: 24}, () => [])
+                };
+            });
         });
+        atualizarSelects();
         render();
     }
 
-    function setTab(t) { tabAtiva = t; render(); }
+    function atualizarSelects() {
+        const select = document.getElementById('sel-serv-camada');
+        select.innerHTML = '';
+        if (tabAtiva === 'Principal') {
+            servicosPrincipais.forEach((s, i) => { if(i !== 3) select.innerHTML += `<option value="${i}">${s}</option>`; });
+        } else {
+            camadasAterro.forEach((c, i) => { select.innerHTML += `<option value="${i}">${c}</option>`; });
+        }
+    }
+
+    function setTab(t) { tabAtiva = t; atualizarSelects(); render(); }
     function setTrecho(tr) { trechoAtivo = tr; render(); }
     function setSecao(sc) { secaoAtiva = sc; render(); }
 
     function salvarDados() {
         const ini = parseInt(document.getElementById('est-ini').value);
         const fim = parseInt(document.getElementById('est-fim').value);
-        const sIdx = parseInt(document.getElementById('sel-serv').value);
+        const idx = parseInt(document.getElementById('sel-serv-camada').value);
         const cor = document.getElementById('sel-cor').value;
-        if(isNaN(ini) || isNaN(fim)) return;
-        for (let i = ini; i <= fim; i++) db[trechoAtivo][secaoAtiva][sIdx][i] = cor;
+        const dataObj = db[trechoAtivo][secaoAtiva];
+
+        if (tabAtiva === 'Principal') {
+            for (let i = ini; i <= fim; i++) dataObj.principal[idx][i] = cor;
+        } else {
+            for (let i = ini; i <= fim; i++) {
+                dataObj.aterroDetalhado[idx][i] = cor;
+                // Lógica de Sincronização Principal
+                let temAlguma = dataObj.aterroDetalhado.some(c => c[i] && c[i] !== "#ffffff");
+                let cft2 = dataObj.aterroDetalhado[22][i];
+                let final = temAlguma ? "#f59e0b" : "#ffffff";
+                if(cft2 === "#10b981" || cft2 === "#3b82f6") final = "#10b981";
+                dataObj.principal[3][i] = final;
+            }
+        }
         render();
     }
 
     function render() {
         const container = document.getElementById('tela-graficos');
-        const resumo = document.getElementById('tela-resumo');
-        const painel = document.getElementById('painel-input');
-
-        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-        if(document.getElementById(`tab-${tabAtiva}`)) document.getElementById(`tab-${tabAtiva}`).classList.add('active');
-        if(tabAtiva !== 'Resumo') {
-            document.getElementById(`btn-${trechoAtivo}`).classList.add('active');
-            document.getElementById(`sec-${secaoAtiva}`).classList.add('active');
-        }
-
-        if(tabAtiva === 'Resumo') {
-            container.style.display = 'none'; painel.style.display = 'none'; resumo.style.display = 'block';
-            gerarResumo(); return;
-        }
-
-        container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
         container.innerHTML = '';
-
         const config = trechosConfig[trechoAtivo];
 
-        // GERA CARDS APENAS DO TRECHO ATIVO
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${tabAtiva}`)?.classList.add('active');
+        document.getElementById(`btn-${trechoAtivo}`)?.classList.add('active');
+        document.getElementById(`sec-${secaoAtiva}`)?.classList.add('active');
+
         for(let km = config.kmIni; km <= config.kmFim; km++) {
-            // Lógica: 50 estacas por KM. 
-            // Para o TH20 (começa no 288), o km 288 deve mostrar as primeiras 50 estacas a partir da 20.000
             const offsetKM = km - config.kmIni;
             const estKM_Ini = config.estIni + (offsetKM * 50);
             const estKM_Fim = Math.min(estKM_Ini + 49, config.estFim);
-
             if (estKM_Ini > config.estFim) break;
 
             const card = document.createElement('div');
@@ -206,7 +190,7 @@
             card.innerHTML = `
                 <div class="km-header">
                     <span class="km-title">KM ${km}</span>
-                    <span class="km-range">Estacas ${estKM_Ini} a ${estKM_Fim}</span>
+                    <span class="km-range">ESTACAS ${estKM_Ini} A ${estKM_Fim}</span>
                 </div>
                 <canvas id="canvas-km-${km}"></canvas>
             `;
@@ -218,78 +202,75 @@
     function desenharKM(km, estMin, estMax) {
         const canvas = document.getElementById(`canvas-km-${km}`);
         const ctx = canvas.getContext('2d');
-        canvas.width = 1100; canvas.height = 280;
+        const numEstacas = estMax - estMin + 1;
+        canvas.width = 1200;
+        canvas.height = tabAtiva === 'Aterro' ? 550 : 250;
 
-        const mEsq = 220, mTopo = 50, areaW = canvas.width - mEsq - 50;
-        const totalEstacasNoKM = estMax - estMin + 1;
+        const mEsq = 200, mTopo = 30, mBase = 40, areaW = canvas.width - mEsq - 50;
+        const areaH = canvas.height - mTopo - mBase;
+        const dataObj = db[trechoAtivo][secaoAtiva];
+        const lista = tabAtiva === 'Principal' ? servicosPrincipais : camadasAterro;
+        const rowH = areaH / lista.length;
 
-        servicos.forEach((label, i) => {
-            if(tabAtiva === 'Aterro' && i !== 3) return;
-            const y = mTopo + (tabAtiva === 'Aterro' ? 80 : i * 50);
+        lista.forEach((label, i) => {
+            const displayIdx = tabAtiva === 'Aterro' ? (lista.length - 1 - i) : i;
+            const y = mTopo + (i * rowH);
             
-            let exec = 0;
-            for(let e = estMin; e <= estMax; e++) {
-                const c = db[trechoAtivo][secaoAtiva][i][e];
-                if(c === '#10b981' || c === '#3b82f6') exec++;
-            }
-            const p = ((exec / totalEstacasNoKM) * 100).toFixed(0);
+            // Desenha Label
+            ctx.fillStyle = lista[displayIdx].includes("CFT") ? "#a855f7" : "#f8fafc";
+            ctx.font = tabAtiva === 'Aterro' ? "500 10px Inter" : "bold 12px Inter";
+            ctx.fillText(lista[displayIdx], 10, y + (rowH/1.5));
 
-            ctx.fillStyle = "#f8fafc"; ctx.font = "bold 12px Inter";
-            ctx.fillText(label, 20, y + 20);
-            ctx.fillStyle = "#10b981"; ctx.fillText(`${p}%`, 180, y + 20);
-
+            // Desenha Trilha
             ctx.fillStyle = "#0f172a";
-            ctx.fillRect(mEsq, y, areaW, 30);
+            ctx.fillRect(mEsq, y, areaW, rowH - 4);
 
-            const wEst = areaW / totalEstacasNoKM;
+            // Desenha Estacas
+            const wEst = areaW / numEstacas;
             for(let e = estMin; e <= estMax; e++) {
-                const cor = db[trechoAtivo][secaoAtiva][i][e];
+                const cor = tabAtiva === 'Principal' ? dataObj.principal[displayIdx][e] : dataObj.aterroDetalhado[displayIdx][e];
                 if(cor && cor !== "#ffffff") {
-                    const x = mEsq + ((e - estMin) / totalEstacasNoKM) * areaW;
                     ctx.fillStyle = cor;
-                    ctx.fillRect(x, y, Math.ceil(wEst), 30);
+                    ctx.fillRect(mEsq + ((e - estMin) * wEst), y, Math.ceil(wEst), rowH - 4);
                 }
             }
         });
 
-        // Régua de Estacas
-        ctx.fillStyle = "#94a3b8"; ctx.font = "10px Inter";
-        for(let e = estMin; e <= estMax; e++) {
-            if(e % 5 === 0 || e === estMin || e === estMax) {
-                const x = mEsq + ((e - estMin) / totalEstacasNoKM) * areaW;
-                ctx.fillText(e, x - 10, canvas.height - 15);
-                ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
-                ctx.beginPath(); ctx.moveTo(x, mTopo); ctx.lineTo(x, canvas.height - 35); ctx.stroke();
+        // Interação HOVER
+        canvas.onmousemove = (evt) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
+            const tip = document.getElementById('tooltip');
+
+            if (x > mEsq && x < mEsq + areaW && y > mTopo && y < mTopo + areaH) {
+                const estHover = Math.floor(((x - mEsq) / areaW) * numEstacas) + estMin;
+                const rowHover = Math.floor((y - mTopo) / rowH);
+                const displayIdx = tabAtiva === 'Aterro' ? (lista.length - 1 - rowHover) : rowHover;
+                const servicoNome = lista[displayIdx];
+                const corStatus = tabAtiva === 'Principal' ? dataObj.principal[displayIdx][estHover] : dataObj.aterroDetalhado[displayIdx][estHover];
+                
+                let statusText = "Vazio";
+                if(corStatus === "#10b981") statusText = "Concluído";
+                if(corStatus === "#f59e0b") statusText = "Em Andamento";
+                if(corStatus === "#3b82f6") statusText = "Mês Passado";
+
+                tip.style.display = 'block';
+                tip.style.left = evt.pageX + 15 + 'px';
+                tip.style.top = evt.pageY + 15 + 'px';
+                tip.innerHTML = `
+                    <strong style="color:var(--primary)">LOCALIZAÇÃO</strong><br>
+                    KM: ${km} | Estaca: ${estHover}<br>
+                    <hr style="border:0; border-top:1px solid #334155; margin:5px 0">
+                    <strong style="color:var(--secondary)">${servicoNome}</strong><br>
+                    Status: ${statusText}
+                `;
+            } else {
+                tip.style.display = 'none';
             }
-        }
-    }
+        };
 
-    function gerarResumo() {
-        let ex = 0, tot = 0;
-        ['th20','th21'].forEach(th => {
-            const config = trechosConfig[th];
-            const estacasNoTrecho = (config.estFim - config.estIni + 1) * 4;
-            tot += estacasNoTrecho;
-            
-            Object.keys(db[th]).forEach(sec => {
-                db[th][sec].forEach(srv => srv.forEach(c => { 
-                    if(c === '#10b981' || c === '#3b82f6') ex++; 
-                }));
-            });
-        });
-
-        const p = ((ex/tot)*100).toFixed(2);
-        const ctx = document.getElementById('chartPizza').getContext('2d');
-        if(window.pCh) window.pCh.destroy();
-        window.pCh = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Executado','Pendente'],
-                datasets: [{ data:[ex, Math.max(0, tot-ex)], backgroundColor:['#10b981','#0f172a'], borderColor:'#334155'}]
-            },
-            options: { cutout:'80%', plugins:{ legend:{ display:false } } }
-        });
-        document.getElementById('resumo-stats').innerHTML = `<span style="color:var(--primary)">${p}%</span> Total Obra`;
+        canvas.onmouseleave = () => document.getElementById('tooltip').style.display = 'none';
     }
 
     init();
