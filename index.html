@@ -39,7 +39,7 @@
             border-radius: 8px; font-size: 0.75rem; font-weight: 600; transition: all 0.2s;
         }
 
-        button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        button.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
         button.btn-special { border-color: var(--warning); color: var(--warning); }
         button.btn-special.active { background: var(--warning); color: #fff; }
 
@@ -54,7 +54,7 @@
         input, select { background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); padding: 0.6rem; border-radius: 6px; }
 
         .container-quilometros {
-            width: 90%; max-width: 1200px; display: grid; grid-template-columns: 1fr; gap: 2rem;
+            width: 90%; max-width: 1200px; display: grid; grid-template-columns: 1fr; gap: 2rem; padding-bottom: 50px;
         }
 
         .km-card {
@@ -64,13 +64,13 @@
 
         .km-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;
         }
 
-        .km-title { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
-        .km-range { font-size: 0.8rem; color: var(--text-dim); }
+        .km-title { font-size: 1.3rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+        .km-range { font-size: 0.85rem; color: var(--text-dim); font-weight: 500; }
 
-        canvas { width: 100%; height: 220px; }
+        canvas { width: 100%; height: 260px; }
 
         #tela-resumo {
             display: none; width: 90%; max-width: 600px; text-align: center;
@@ -83,7 +83,7 @@
 <div id="tooltip"></div>
 
 <header>
-    <h1>Gestão de Infraestrutura por Quilômetro</h1>
+    <h1>PAINEL DE GESTÃO: KM 288 AO 319</h1>
 </header>
 
 <div class="nav-container">
@@ -125,13 +125,13 @@
             <option value="#ffffff">⚪ Limpar</option>
         </select>
     </div>
-    <button style="background:var(--primary); color:#white; font-weight:bold; margin-top:auto; height:40px;" onclick="salvarDados()">Atualizar KM</button>
+    <button style="background:var(--primary); color:white; font-weight:bold; margin-top:auto; height:45px; border:none;" onclick="salvarDados()">Lançar Informações</button>
 </div>
 
 <div id="tela-graficos" class="container-quilometros"></div>
 
 <div id="tela-resumo">
-    <h2>Resumo Consolidado (KM 288 - 319)</h2>
+    <h2>Resumo Consolidado</h2>
     <div style="width: 250px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
     <div id="resumo-stats" style="margin-top:2rem; font-size:1.5rem; font-weight:700;"></div>
 </div>
@@ -141,17 +141,12 @@
     const db = { th20: {}, th21: {} };
     const servicos = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
     
-    // Configurações de estacas originais
-    const rangesOriginais = {
-        th20: { "Duplicação": [20000, 21028], "Marginal Norte": [0, 101], "Marginal Sul": [0, 100] },
-        th21: { "Duplicação": [21000, 21791], "Marginal Norte": [5, 101], "Marginal Sul": [0, 100] }
-    };
-
     function init() {
         ['th20', 'th21'].forEach(th => {
-            Object.keys(rangesOriginais[th]).forEach(sec => {
-                db[th][sec] = [[], [], [], []];
-            });
+            // Inicializamos o banco para aceitar as estacas dos KMs 288 a 319 (Estacas 14400 a 15999)
+            // e também os ranges anteriores que você usava (20000 etc)
+            const secoes = ["Duplicação", "Marginal Norte", "Marginal Sul"];
+            secoes.forEach(sec => { db[th][sec] = [[], [], [], []]; });
         });
         render();
     }
@@ -190,20 +185,16 @@
         container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
         container.innerHTML = '';
 
-        // Gerar Gráficos por KM (288 ao 319)
+        // LOOP KM 288 AO 319
         for(let km = 288; km <= 319; km++) {
             const estacaInicialKM = km * 50;
             const estacaFinalKM = (km * 50) + 49;
-
-            // Verifica se este KM tem interseção com o range da seção ativa
-            const r = rangesOriginais[trechoAtivo][secaoAtiva];
-            if (estacaFinalKM < r[0] || estacaInicialKM > r[1]) continue;
 
             const card = document.createElement('div');
             card.className = 'km-card';
             card.innerHTML = `
                 <div class="km-header">
-                    <span class="km-title">QUILÔMETRO ${km}</span>
+                    <span class="km-title">KM ${km}</span>
                     <span class="km-range">Estacas ${estacaInicialKM} a ${estacaFinalKM}</span>
                 </div>
                 <canvas id="canvas-km-${km}"></canvas>
@@ -216,14 +207,14 @@
     function desenharKM(km, estMin, estMax) {
         const canvas = document.getElementById(`canvas-km-${km}`);
         const ctx = canvas.getContext('2d');
-        canvas.width = 1000; canvas.height = 250;
+        canvas.width = 1100; canvas.height = 280;
 
-        const mEsq = 180, mTopo = 40, areaW = canvas.width - mEsq - 40;
+        const mEsq = 220, mTopo = 50, areaW = canvas.width - mEsq - 50;
         const totalEstacasKM = 50;
 
         servicos.forEach((label, i) => {
             if(tabAtiva === 'Aterro' && i !== 3) return;
-            const y = mTopo + (tabAtiva === 'Aterro' ? 60 : i * 45);
+            const y = mTopo + (tabAtiva === 'Aterro' ? 80 : i * 50);
             
             // Calculo % do KM
             let exec = 0;
@@ -233,54 +224,58 @@
             }
             const p = ((exec/50)*100).toFixed(0);
 
-            ctx.fillStyle = "#f8fafc"; ctx.font = "600 11px Inter";
-            ctx.fillText(label, 10, y + 18);
-            ctx.fillStyle = "#10b981"; ctx.fillText(`${p}%`, 140, y + 18);
+            // Labels
+            ctx.fillStyle = "#f8fafc"; ctx.font = "bold 12px Inter";
+            ctx.fillText(label, 20, y + 20);
+            ctx.fillStyle = "#10b981"; ctx.fillText(`${p}%`, 180, y + 20);
 
-            // Barra de fundo
+            // Background da trilha
             ctx.fillStyle = "#0f172a";
-            ctx.fillRect(mEsq, y, areaW, 25);
+            ctx.fillRect(mEsq, y, areaW, 30);
 
-            // Estacas individuais (blocos)
+            // Pintura das Estacas
             const wEst = areaW / totalEstacasKM;
             for(let e = estMin; e <= estMax; e++) {
                 const cor = db[trechoAtivo][secaoAtiva][i][e];
                 if(cor && cor !== "#ffffff") {
                     const x = mEsq + ((e - estMin) / totalEstacasKM) * areaW;
                     ctx.fillStyle = cor;
-                    ctx.fillRect(x, y, Math.ceil(wEst), 25);
+                    ctx.fillRect(x, y, Math.ceil(wEst), 30);
                 }
             }
         });
 
-        // Régua inferior do KM
-        ctx.fillStyle = "#475569"; ctx.font = "9px Inter";
+        // Régua de Estacas (Números embaixo do gráfico)
+        ctx.fillStyle = "#94a3b8"; ctx.font = "10px Inter";
         for(let e = estMin; e <= estMax; e++) {
-            if(e % 10 === 0) {
+            if(e % 5 === 0) { // Mostra número a cada 5 estacas
                 const x = mEsq + ((e - estMin) / totalEstacasKM) * areaW;
-                ctx.fillText(e, x - 10, canvas.height - 10);
+                ctx.fillText(e, x - 10, canvas.height - 15);
+                ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
+                ctx.beginPath(); ctx.moveTo(x, mTopo); ctx.lineTo(x, canvas.height - 35); ctx.stroke();
             }
         }
     }
 
     function gerarResumo() {
-        let ex = 0, tot = 0;
+        let ex = 0, tot = 1; // tot=1 para evitar divisão por zero inicial
+        const kmTotal = (319 - 288 + 1) * 50 * 4; 
+        tot = kmTotal;
+
         ['th20','th21'].forEach(th => {
-            Object.keys(rangesOriginais[th]).forEach(sec => {
-                const r = rangesOriginais[th][sec];
-                const totalSecao = (r[1] - r[0] + 1) * 4;
-                tot += totalSecao;
+            Object.keys(db[th]).forEach(sec => {
                 db[th][sec].forEach(srv => srv.forEach(c => { if(c === '#10b981' || c === '#3b82f6') ex++; }));
             });
         });
+
         const p = ((ex/tot)*100).toFixed(2);
         const ctx = document.getElementById('chartPizza').getContext('2d');
         if(window.pCh) window.pCh.destroy();
         window.pCh = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Concluído','Pendente'],
-                datasets: [{ data:[ex, tot-ex], backgroundColor:['#10b981','#0f172a'], borderColor:'#334155'}]
+                labels: ['Executado','Pendente'],
+                datasets: [{ data:[ex, Math.max(0, tot-ex)], backgroundColor:['#10b981','#0f172a'], borderColor:'#334155'}]
             },
             options: { cutout:'80%', plugins:{ legend:{ display:false } } }
         });
