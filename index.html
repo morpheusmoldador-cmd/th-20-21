@@ -57,14 +57,17 @@
         <button onclick="setTab('Sinalização')" id="tab-Sinalização">Sinalização</button>
         <button onclick="setTab('Resumo')" id="tab-Resumo" class="btn-resumo">Resumo % Global</button>
     </div>
-    <div class="menu-row">
-        <button onclick="setTrecho('th20')" id="btn-th20" class="active">TH-20 (KM 288-302)</button>
-        <button onclick="setTrecho('th21')" id="btn-th21">TH-21 (KM 303-319)</button>
-    </div>
-    <div class="menu-row">
-        <button onclick="setSecao('Duplicação')" id="sec-Duplicação" class="active">Duplicação</button>
-        <button onclick="setSecao('Marginal Norte')" id="sec-Marginal Norte">Marginal Norte</button>
-        <button onclick="setSecao('Marginal Sul')" id="sec-Marginal Sul">Marginal Sul</button>
+    
+    <div id="sub-abas-container">
+        <div class="menu-row" style="margin-bottom: 0.8rem;">
+            <button onclick="setTrecho('th20')" id="btn-th20" class="active">TH-20 (KM 288-302)</button>
+            <button onclick="setTrecho('th21')" id="btn-th21">TH-21 (KM 303-319)</button>
+        </div>
+        <div class="menu-row">
+            <button onclick="setSecao('Duplicação')" id="sec-Duplicação" class="active">Duplicação</button>
+            <button onclick="setSecao('Marginal Norte')" id="sec-Marginal Norte">Marginal Norte</button>
+            <button onclick="setSecao('Marginal Sul')" id="sec-Marginal Sul">Marginal Sul</button>
+        </div>
     </div>
 </div>
 
@@ -118,7 +121,6 @@
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
         Aterro: ["3ª Camada CFT", "2ª Camada CFT", "1ª Camada CFT", ...Array.from({length: 20}, (_, i) => `${20-i}ª Camada`), "Fundo"],
-        // ORDEM DE DRENAGEM AJUSTADA (Reaterro no topo, Escavação na base)
         Drenagem: ["Reaterro", "Caixa", "Ala", "Tubos", "Contra-berço", "Berço", "Escavação"],
         Pavimentação: ["Capa Asfáltica", "Base", "Sub-Base", "Sub-Leito"],
         OAE: ["Laje", "Vigas", "Manto/Pilares", "Fundação"],
@@ -186,19 +188,28 @@
         const container = document.getElementById('tela-graficos');
         const resumo = document.getElementById('tela-resumo');
         const painel = document.getElementById('painel-input');
+        const subAbas = document.getElementById('sub-abas-container');
 
         document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
         document.getElementById(`tab-${tabAtiva}`)?.classList.add('active');
         document.getElementById(`btn-${trechoAtivo}`)?.classList.add('active');
         document.getElementById(`sec-${secaoAtiva}`)?.classList.add('active');
 
+        // Lógica de visibilidade para o Resumo Global
         if(tabAtiva === 'Resumo') {
-            container.style.display = 'none'; painel.style.display = 'none'; resumo.style.display = 'block';
+            container.style.display = 'none'; 
+            painel.style.display = 'none'; 
+            subAbas.style.display = 'none'; // OCULTA AS SUB-ABAS
+            resumo.style.display = 'block';
             gerarResumo(); 
             return;
         }
 
-        container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
+        container.style.display = 'grid'; 
+        painel.style.display = 'grid'; 
+        subAbas.style.display = 'block'; // MOSTRA AS SUB-ABAS NAS OUTRAS TELAS
+        resumo.style.display = 'none';
+        
         container.innerHTML = '';
         const config = trechosConfig[trechoAtivo];
         for(let km = config.kmIni; km <= config.kmFim; km++) {
