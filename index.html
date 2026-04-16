@@ -2,293 +2,358 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Evolução de Obra Pro | Infra Tech</title>
+    <title>SGO - Sistema de Gestão de Obras</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --neon-green: #00ff41; --bg-black: #050505; }
-        body {
-            background-color: var(--bg-black);
-            color: var(--neon-green);
-            font-family: 'Courier New', monospace;
-            padding: 20px; margin: 0;
-            display: flex; flex-direction: column; align-items: center;
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --primary: #10b981; /* Emerald */
+            --secondary: #3b82f6; /* Blue */
+            --warning: #f59e0b; /* Amber */
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: #334155;
         }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            width: 100%; padding: 2rem 0; text-align: center;
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; text-transform: uppercase; color: var(--primary); }
 
         #tooltip {
-            position: absolute; background: rgba(0, 255, 65, 0.95);
-            color: #000; padding: 8px; border-radius: 4px;
-            font-size: 13px; font-weight: bold; pointer-events: none;
-            display: none; z-index: 1000;
+            position: absolute; background: rgba(15, 23, 42, 0.9);
+            color: white; padding: 10px; border-radius: 8px;
+            font-size: 12px; border: 1px solid var(--primary);
+            pointer-events: none; display: none; z-index: 1000;
+            backdrop-filter: blur(4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
         }
 
-        .menu-principal, .sub-menu { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .nav-container { display: flex; flex-direction: column; gap: 1rem; width: 90%; max-width: 1100px; margin-bottom: 2rem; }
         
+        .menu-row { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+
         button {
-            background: transparent; border: 1px solid var(--neon-green);
-            color: var(--neon-green); padding: 8px 15px; cursor: pointer;
-            text-transform: uppercase; font-weight: bold; transition: 0.3s;
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-dim); padding: 0.6rem 1.2rem; cursor: pointer;
+            border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+            transition: all 0.2s ease;
         }
 
-        button:hover, button.active { background: var(--neon-green); color: #000; }
-        button.btn-resumo { border-color: #fff; color: #fff; margin-left: 20px; }
-        button.btn-resumo.active { background: #fff; color: #000; }
+        button:hover { border-color: var(--primary); color: var(--text-main); }
+        button.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+        
+        button.btn-special { border-color: var(--warning); color: var(--warning); }
+        button.btn-special.active { background: var(--warning); color: #fff; }
 
-        .controles {
-            background: #111; padding: 20px; border: 1px solid #333;
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px; width: 100%; max-width: 1000px; margin-bottom: 20px;
+        .dashboard-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem; width: 90%; max-width: 1100px;
+            background: var(--bg-card); padding: 1.5rem; border-radius: 16px;
+            border: 1px solid var(--border); margin-bottom: 2rem;
         }
 
-        input, select { background: #000; border: 1px solid #444; color: #fff; padding: 8px; }
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.7rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }
 
-        .container-graficos { width: 100%; max-width: 1100px; }
-        .grafico-box { margin-bottom: 60px; border-left: 2px solid var(--neon-green); padding-left: 15px; }
-        
-        canvas { background: #000; border: 1px solid #1a1a1a; width: 100%; cursor: crosshair; }
-        
+        input, select {
+            background: var(--bg-body); border: 1px solid var(--border);
+            color: var(--text-main); padding: 0.75rem; border-radius: 8px;
+            font-size: 0.9rem; outline: none;
+        }
+
+        input:focus { border-color: var(--primary); }
+
+        .btn-update {
+            background: var(--primary) !important; color: white !important;
+            grid-column: span 1; margin-top: auto; height: 45px;
+        }
+
+        .canvas-card {
+            background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border);
+            padding: 2rem; width: 90%; max-width: 1100px; margin-bottom: 3rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        h3 { margin-top: 0; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+        h3::before { content: ''; width: 4px; height: 20px; background: var(--primary); border-radius: 10px; }
+
+        canvas { width: 100%; border-radius: 8px; }
+
         #tela-resumo {
-            display: none; width: 100%; max-width: 800px; text-align: center;
-            background: #111; padding: 40px; border: 1px solid var(--neon-green);
+            display: none; width: 90%; max-width: 700px; text-align: center;
+            background: var(--bg-card); padding: 3rem; border-radius: 20px;
+            border: 1px solid var(--border);
         }
-
-        h1 { font-size: 22px; letter-spacing: 3px; text-align: center; }
-        h3 { color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 30px; }
     </style>
 </head>
 <body>
 
 <div id="tooltip"></div>
 
-<h1>SISTEMA DE EVOLUÇÃO DE OBRA</h1>
+<header>
+    <h1>Infrastructure Control Panel</h1>
+</header>
 
-<div class="menu-principal">
-    <button onclick="setMenu('Terraplanagem')" id="m-Terraplanagem" class="active">Terraplanagem</button>
-    <button onclick="setMenu('Drenagem')" id="m-Drenagem">Drenagem</button>
-    <button onclick="setMenu('Obras de Artes')" id="m-Obras">Obras de Artes</button>
-    <button onclick="setMenu('Pavimentação')" id="m-Pavimentação">Pavimentação</button>
-    <button onclick="setMenu('Sinalização')" id="m-Sinalização">Sinalização</button>
-    <button onclick="abrirResumo()" class="btn-resumo" id="btn-resumo-toggle">RESUMO %</button>
+<div class="nav-container">
+    <div class="menu-row">
+        <button onclick="setTab('Principal')" id="tab-Principal" class="active">Terraplanagem</button>
+        <button onclick="setTab('Aterro')" id="tab-Aterro" class="btn-special">Monitoramento Aterro</button>
+        <button onclick="setTab('Drenagem')" id="tab-Drenagem">Drenagem</button>
+        <button onclick="setTab('Obras')" id="tab-Obras">Obras de Arte</button>
+        <button onclick="setTab('Resumo')" class="btn-update" style="background: #fff !important; color: #000 !important;" id="tab-Resumo">Visualizar Resumo %</button>
+    </div>
+
+    <div id="nav-trecho" class="menu-row">
+        <button onclick="setTrecho('th20')" id="btn-th20" class="active">Trecho TH-20</button>
+        <button onclick="setTrecho('th21')" id="btn-th21">Trecho TH-21</button>
+    </div>
+
+    <div id="nav-secao" class="menu-row">
+        <button onclick="setSecao('Duplicação')" id="sec-Duplicação" class="active">Duplicação</button>
+        <button onclick="setSecao('Marginal Norte')" id="sec-Marginal Norte">Marginal Norte</button>
+        <button onclick="setSecao('Marginal Sul')" id="sec-Marginal Sul">Marginal Sul</button>
+    </div>
 </div>
 
-<div id="sub-menu-container" class="sub-menu">
-    <button onclick="setSub('th20')" id="btn-th20" class="active">th-20</button>
-    <button onclick="setSub('th21')" id="btn-th21">th-21</button>
-</div>
-
-<div id="painel-input" class="controles">
-    <select id="sel-secao">
-        <option value="Duplicação">Duplicação</option>
-        <option value="Marginal Norte">Marginal Norte</option>
-        <option value="Marginal Sul">Marginal Sul</option>
-    </select>
-    <input type="number" id="est-ini" placeholder="Estaca Inicial">
-    <input type="number" id="est-fim" placeholder="Estaca Final">
-    <select id="sel-serv">
-        <option value="0">Limpeza</option>
-        <option value="1">Compensação Lateral</option>
-        <option value="2">Corte</option>
-        <option value="3">Aterro</option>
-    </select>
-    <select id="sel-cor">
-        <option value="#ffff00">Em Andamento (Amarelo)</option>
-        <option value="#00ff41">Exec. Este Mês (Verde)</option>
-        <option value="#0000ff">Exec. Mês Passado (Azul)</option>
-        <option value="#ffffff">Limpar / Falta Executar (Branco)</option>
-    </select>
-    <button onclick="salvarProgresso()">ATUALIZAR</button>
+<div id="painel-input" class="dashboard-grid">
+    <div class="input-group">
+        <label>Estaca Inicial</label>
+        <input type="number" id="est-ini" placeholder="0000">
+    </div>
+    <div class="input-group">
+        <label>Estaca Final</label>
+        <input type="number" id="est-fim" placeholder="0000">
+    </div>
+    <div class="input-group">
+        <label>Serviço</label>
+        <select id="sel-serv">
+            <option value="0">Limpeza</option>
+            <option value="1">Compensação Lateral</option>
+            <option value="2">Corte</option>
+            <option value="3">Aterro</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <label>Status</label>
+        <select id="sel-cor">
+            <option value="#f59e0b">🟡 Em Andamento</option>
+            <option value="#10b981">🟢 Exec. Este Mês</option>
+            <option value="#3b82f6">🔵 Exec. Mês Passado</option>
+            <option value="#ffffff">⚪ Limpar Dados</option>
+        </select>
+    </div>
+    <button class="btn-update" onclick="salvarDados()">Atualizar Dashboard</button>
 </div>
 
 <div id="tela-graficos" class="container-graficos"></div>
 
 <div id="tela-resumo">
-    <h2>RELATÓRIO DE PROGRESSO</h2>
-    <div style="width: 350px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
-    <div id="estatisticas-texto" style="margin-top: 30px; font-size: 20px;"></div>
+    <h2 style="margin-bottom: 2rem;">Progresso Global da Obra</h2>
+    <div style="width: 280px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
+    <div id="resumo-stats" style="margin-top:2rem; font-size:1.5rem; font-weight:700;"></div>
 </div>
 
 <script>
-    let menuAtivo = 'Terraplanagem';
-    let subAtivo = 'th20';
-    let modoResumo = false;
+    let tabAtiva = 'Principal';
+    let trechoAtivo = 'th20';
+    let secaoAtiva = 'Duplicação';
 
+    const db = { th20: {}, th21: {} };
+    const servicos = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
+    
     const configs = {
         th20: {
-            "Duplicação": [ {min: 20000, max: 20737}, {min: 21000, max: 21028} ],
-            "Marginal Norte": [ {min: 0, max: 101} ],
-            "Marginal Sul": [ {min: 0, max: 100} ]
+            "Duplicação": [{min: 20000, max: 20737}, {min: 21000, max: 21028}],
+            "Marginal Norte": [{min: 0, max: 101}],
+            "Marginal Sul": [{min: 0, max: 100}]
         },
         th21: {
-            "Duplicação": [ {min: 21000, max: 21791} ],
-            "Marginal Norte": [ {min: 5, max: 101} ],
-            "Marginal Sul": [ {min: 0, max: 100} ]
+            "Duplicação": [{min: 21000, max: 21791}],
+            "Marginal Norte": [{min: 5, max: 101}],
+            "Marginal Sul": [{min: 0, max: 100}]
         }
     };
 
-    const servicosLabels = ["Limpeza", "Compensação", "Corte", "Aterro"];
-    const db = { th20: {}, th21: {} };
-
-    function initDB() {
+    function init() {
         ['th20', 'th21'].forEach(th => {
             Object.keys(configs[th]).forEach(sec => {
                 db[th][sec] = [[], [], [], []];
             });
         });
+        render();
     }
 
-    function setMenu(m) { menuAtivo = m; modoResumo = false; render(); }
-    function setSub(s) { subAtivo = s; render(); }
-    function abrirResumo() { modoResumo = true; render(); gerarCalculoResumo(); }
+    function setTab(t) { 
+        tabAtiva = t; 
+        const servSelect = document.getElementById('sel-serv');
+        if(t === 'Aterro') {
+            servSelect.value = "3";
+            servSelect.disabled = true;
+        } else {
+            servSelect.disabled = false;
+        }
+        render(); 
+    }
+    function setTrecho(tr) { trechoAtivo = tr; render(); }
+    function setSecao(sc) { secaoAtiva = sc; render(); }
 
-    function salvarProgresso() {
-        const sec = document.getElementById('sel-secao').value;
+    function salvarDados() {
         const ini = parseInt(document.getElementById('est-ini').value);
         const fim = parseInt(document.getElementById('est-fim').value);
-        const sIdx = document.getElementById('sel-serv').value;
+        const sIdx = parseInt(document.getElementById('sel-serv').value);
         const cor = document.getElementById('sel-cor').value;
         if(isNaN(ini) || isNaN(fim)) return;
-        for (let i = ini; i <= fim; i++) db[subAtivo][sec][sIdx][i] = cor;
+        for (let i = ini; i <= fim; i++) db[trechoAtivo][secaoAtiva][sIdx][i] = cor;
         render();
     }
 
     function render() {
         const container = document.getElementById('tela-graficos');
-        const telaResumo = document.getElementById('tela-resumo');
-        
-        // Atualizar classes dos botões
-        document.querySelectorAll('.menu-principal button').forEach(b => b.classList.toggle('active', !modoResumo && b.innerText === menuAtivo));
-        document.getElementById('btn-resumo-toggle').classList.toggle('active', modoResumo);
-        document.getElementById('btn-th20').classList.toggle('active', subAtivo === 'th20');
-        document.getElementById('btn-th21').classList.toggle('active', subAtivo === 'th21');
+        const resumo = document.getElementById('tela-resumo');
+        const painel = document.getElementById('painel-input');
 
-        if (modoResumo) {
-            container.style.display = 'none';
-            telaResumo.style.display = 'block';
-            return;
+        document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${tabAtiva}`).classList.add('active');
+        if(tabAtiva !== 'Resumo') {
+            document.getElementById(`btn-${trechoAtivo}`).classList.add('active');
+            document.getElementById(`sec-${secaoAtiva}`).classList.add('active');
         }
 
-        container.style.display = 'block';
-        telaResumo.style.display = 'none';
+        if(tabAtiva === 'Resumo') {
+            container.style.display = 'none'; painel.style.display = 'none'; resumo.style.display = 'block';
+            gerarResumo(); return;
+        }
+
+        container.style.display = 'block'; painel.style.display = 'grid'; resumo.style.display = 'none';
         container.innerHTML = '';
 
-        if (menuAtivo === 'Terraplanagem') {
-            Object.keys(configs[subAtivo]).forEach(sec => {
-                const box = document.createElement('div');
-                box.className = 'grafico-box';
-                box.innerHTML = `<h3>${sec.toUpperCase()}</h3><canvas id="canvas-${sec}" width="1050" height="280"></canvas>`;
-                container.appendChild(box);
-                desenharGrafico(sec);
-            });
-        }
+        const card = document.createElement('div');
+        card.className = 'canvas-card';
+        card.innerHTML = `<h3>${secaoAtiva} - ${trechoAtivo.toUpperCase()}</h3>`;
+        
+        const canvas = document.createElement('canvas');
+        canvas.id = 'mainCanvas'; canvas.width = 1100; canvas.height = 400;
+        card.appendChild(canvas);
+        container.appendChild(card);
+
+        desenharGrafico();
     }
 
-    function desenharGrafico(sec) {
-        const canvas = document.getElementById(`canvas-${sec}`);
+    function desenharGrafico() {
+        const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
-        const ranges = configs[subAtivo][sec];
-        
-        const minGeral = Math.min(...ranges.map(r => r.min));
-        const maxGeral = Math.max(...ranges.map(r => r.max));
-        const totalEstacas = maxGeral - minGeral;
+        const ranges = configs[trechoAtivo][secaoAtiva];
+        const minE = Math.min(...ranges.map(r => r.min));
+        const maxE = Math.max(...ranges.map(r => r.max));
+        const totalEstacas = maxE - minE;
 
-        const margemEsq = 150;
-        const margemTopo = 40;
-        const areaUtil = canvas.width - margemEsq - 40;
+        const mEsq = 240; const mTopo = 80; const areaW = canvas.width - mEsq - 50;
 
-        // 1. Desenhar Números das Estacas (Régua)
-        ctx.fillStyle = "#888";
-        ctx.font = "9px Arial";
-        const passo = totalEstacas > 200 ? 50 : 10; // Ajusta densidade dos números
-        for (let e = minGeral; e <= maxGeral; e++) {
-            if (e % passo === 0 || e === minGeral || e === maxGeral) {
-                const x = margemEsq + ((e - minGeral) / totalEstacas) * areaUtil;
-                ctx.fillText(e, x - 10, margemTopo - 10);
-                ctx.strokeStyle = "#222";
-                ctx.beginPath(); ctx.moveTo(x, margemTopo - 5); ctx.lineTo(x, canvas.height - 20); ctx.stroke();
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+
+        // Grid de KM
+        for (let e = minE; e <= maxE; e++) {
+            const x = mEsq + ((e - minE) / totalEstacas) * areaW;
+            if (e % 50 === 0) {
+                ctx.fillStyle = "#475569"; ctx.font = "bold 10px Inter";
+                ctx.fillText(`KM ${e/50}`, x - 15, mTopo - 35);
+                ctx.strokeStyle = "rgba(51, 65, 85, 0.5)";
+                ctx.beginPath(); ctx.moveTo(x, mTopo - 25); ctx.lineTo(x, canvas.height - 40); ctx.stroke();
             }
         }
 
-        // 2. Desenhar as Barras de Serviço
-        servicosLabels.forEach((label, i) => {
-            const y = margemTopo + (i * 50);
-            ctx.fillStyle = "#fff";
-            ctx.font = "11px Courier New";
-            ctx.fillText(label, 10, y + 20);
+        servicos.forEach((label, i) => {
+            if(tabAtiva === 'Aterro' && i !== 3) return;
+            const y = mTopo + (tabAtiva === 'Aterro' ? 80 : i * 75);
+            
+            // % Calculation
+            let exec = 0; let totalS = 0;
+            ranges.forEach(r => {
+                for(let s = r.min; s <= r.max; s++){
+                    totalS++; const c = db[trechoAtivo][secaoAtiva][i][s];
+                    if(c === '#10b981' || c === '#3b82f6') exec++;
+                }
+            });
+            const p = ((exec/totalS)*100).toFixed(1);
 
-            // Fundo da trilha
-            ctx.fillStyle = "#111";
-            ctx.fillRect(margemEsq, y, areaUtil, 30);
+            ctx.fillStyle = "#f8fafc"; ctx.font = "600 13px Inter";
+            ctx.fillText(label, 20, y + 22);
+            ctx.fillStyle = "#10b981"; ctx.fillText(`${p}%`, 200, y + 22);
 
-            const larguraEstaca = areaUtil / (totalEstacas + 1);
+            // Track background
+            ctx.fillStyle = "#0f172a";
+            ctx.roundRect ? ctx.fill(ctx.roundRect(mEsq, y, areaW, 35, 6)) : ctx.fillRect(mEsq, y, areaW, 35);
 
-            // Desenhar apenas estacas alimentadas
-            for (let estaca = minGeral; estaca <= maxGeral; estaca++) {
-                const cor = db[subAtivo][sec][i][estaca];
-                const x = margemEsq + ((estaca - minGeral) / totalEstacas) * areaUtil;
-                
+            // Blocks
+            const wEst = areaW / (totalEstacas + 1);
+            for (let e = minE; e <= maxE; e++) {
+                const cor = db[trechoAtivo][secaoAtiva][i][e];
                 if (cor && cor !== "#ffffff") {
+                    const x = mEsq + ((e - minE) / totalEstacas) * areaW;
                     ctx.fillStyle = cor;
-                    ctx.fillRect(x, y, Math.ceil(larguraEstaca), 30);
-                } else {
-                    // Contorno sutil para estacas vazias
-                    ctx.strokeStyle = "#1a1a1a";
-                    ctx.strokeRect(x, y, larguraEstaca, 30);
+                    ctx.fillRect(x, y, Math.ceil(wEst)+1, 35);
                 }
             }
         });
 
-        // Interação Mouse
         canvas.onmousemove = (e) => {
             const rect = canvas.getBoundingClientRect();
             const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
             const my = (e.clientY - rect.top) * (canvas.height / rect.height);
             const tip = document.getElementById('tooltip');
-
-            if (mx > margemEsq && mx < margemEsq + areaUtil) {
-                const estacaHover = Math.round(((mx - margemEsq) / areaUtil) * totalEstacas + minGeral);
-                const sIdx = Math.floor((my - margemTopo) / 50);
-
-                if (sIdx >= 0 && sIdx < 4) {
-                    tip.style.display = 'block';
-                    tip.style.left = e.pageX + 15 + 'px';
-                    tip.style.top = e.pageY + 15 + 'px';
-                    const statusCor = db[subAtivo][sec][sIdx][estacaHover] || "Não Iniciado";
-                    tip.innerHTML = `ESTACA: ${estacaHover}<br>SERVIÇO: ${servicosLabels[sIdx]}`;
-                    return;
-                }
-            }
-            tip.style.display = 'none';
+            if (mx > mEsq && mx < mEsq + areaW) {
+                const estHover = Math.round(((mx - mEsq) / areaW) * totalEstacas + minE);
+                tip.style.display = 'block';
+                tip.style.left = e.pageX + 15 + 'px';
+                tip.style.top = e.pageY + 15 + 'px';
+                tip.innerHTML = `<strong>Localização:</strong> KM ${Math.floor(estHover/50)}<br><strong>Estaca:</strong> ${estHover}`;
+            } else { tip.style.display = 'none'; }
         };
     }
 
-    function gerarCalculoResumo() {
-        let d = { and: 0, mes: 0, ant: 0, total: 0 };
-        ['th20', 'th21'].forEach(th => {
+    function gerarResumo() {
+        let ex = 0; let tot = 0;
+        ['th20','th21'].forEach(th => {
             Object.keys(configs[th]).forEach(sec => {
-                configs[th][sec].forEach(r => d.total += (r.max - r.min + 1) * 4);
-                db[th][sec].forEach(srv => srv.forEach(c => {
-                    if (c === '#ffff00') d.and++;
-                    else if (c === '#00ff41') d.mes++;
-                    else if (c === '#0000ff') d.ant++;
-                }));
+                configs[th][sec].forEach(r => tot += (r.max - r.min + 1) * 4);
+                db[th][sec].forEach(s => s.forEach(c => { if(c === '#10b981' || c === '#3b82f6') ex++; }));
             });
         });
-        const conc = d.mes + d.ant;
-        const perc = ((conc / d.total) * 100).toFixed(2);
+        const p = ((ex/tot)*100).toFixed(2);
         const ctx = document.getElementById('chartPizza').getContext('2d');
-        if (window.pCh) window.pCh.destroy();
+        if(window.pCh) window.pCh.destroy();
         window.pCh = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Em Andamento', 'Este Mês', 'Mês Passado', 'Faltante'],
-                datasets: [{ data: [d.and, d.mes, d.ant, d.total - (conc + d.and)], backgroundColor: ['#ffff00', '#00ff41', '#0000ff', '#222'], borderColor: '#000' }]
+                labels: ['Executado','Pendente'],
+                datasets: [{ 
+                    data: [ex, tot-ex], 
+                    backgroundColor: ['#10b981','#0f172a'], 
+                    borderColor:'#334155',
+                    borderWidth: 2
+                }]
             },
-            options: { plugins: { legend: { labels: { color: '#00ff41' } } } }
+            options: { cutout: '80%', plugins: { legend: { display: false } } }
         });
-        document.getElementById('estatisticas-texto').innerHTML = `TOTAL CONCLUÍDO: <span style="color:#00ff41">${perc}%</span>`;
+        document.getElementById('resumo-stats').innerHTML = `<span style="color:var(--primary)">${p}%</span> Concluído`;
     }
 
-    initDB();
-    render();
+    init();
 </script>
 </body>
 </html>
