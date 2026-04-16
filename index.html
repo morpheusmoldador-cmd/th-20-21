@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>SGO Pro - Gestão por Quilômetro</title>
+    <title>SGO Pro - Gestão Técnica TH-20/21</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -70,7 +70,7 @@
         .km-title { font-size: 1.3rem; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
         .km-range { font-size: 0.85rem; color: var(--text-dim); font-weight: 500; }
 
-        canvas { width: 100%; height: 260px; }
+        canvas { width: 100%; height: 280px; }
 
         #tela-resumo {
             display: none; width: 90%; max-width: 600px; text-align: center;
@@ -83,19 +83,19 @@
 <div id="tooltip"></div>
 
 <header>
-    <h1>PAINEL DE GESTÃO: KM 288 AO 319</h1>
+    <h1>CONTROLE DE INFRAESTRUTURA - TH20 / TH21</h1>
 </header>
 
 <div class="nav-container">
     <div class="menu-row">
         <button onclick="setTab('Principal')" id="tab-Principal" class="active">Terraplanagem</button>
-        <button onclick="setTab('Aterro')" id="tab-Aterro" class="btn-special">Aba Aterro</button>
+        <button onclick="setTab('Aterro')" id="tab-Aterro" class="btn-special">Monitoramento Aterro</button>
         <button onclick="setTab('Drenagem')">Drenagem</button>
         <button onclick="setTab('Resumo')" style="background:#fff; color:#000;" id="tab-Resumo">Resumo Geral %</button>
     </div>
     <div class="menu-row">
-        <button onclick="setTrecho('th20')" id="btn-th20" class="active">Trecho TH-20</button>
-        <button onclick="setTrecho('th21')" id="btn-th21">Trecho TH-21</button>
+        <button onclick="setTrecho('th20')" id="btn-th20" class="active">TRECHO TH-20 (KM 288-302)</button>
+        <button onclick="setTrecho('th21')" id="btn-th21">TRECHO TH-21 (KM 303-319)</button>
     </div>
     <div class="menu-row">
         <button onclick="setSecao('Duplicação')" id="sec-Duplicação" class="active">Duplicação</button>
@@ -105,8 +105,8 @@
 </div>
 
 <div id="painel-input" class="dashboard-grid">
-    <div class="input-group"><label>Estaca Inicial</label><input type="number" id="est-ini"></div>
-    <div class="input-group"><label>Estaca Final</label><input type="number" id="est-fim"></div>
+    <div class="input-group"><label>Estaca Inicial</label><input type="number" id="est-ini" placeholder="Ex: 20150"></div>
+    <div class="input-group"><label>Estaca Final</label><input type="number" id="est-fim" placeholder="Ex: 20180"></div>
     <div class="input-group">
         <label>Serviço</label>
         <select id="sel-serv">
@@ -125,13 +125,13 @@
             <option value="#ffffff">⚪ Limpar</option>
         </select>
     </div>
-    <button style="background:var(--primary); color:white; font-weight:bold; margin-top:auto; height:45px; border:none;" onclick="salvarDados()">Lançar Informações</button>
+    <button style="background:var(--primary); color:white; font-weight:bold; margin-top:auto; height:45px; border:none;" onclick="salvarDados()">Atualizar Dados</button>
 </div>
 
 <div id="tela-graficos" class="container-quilometros"></div>
 
 <div id="tela-resumo">
-    <h2>Resumo Consolidado</h2>
+    <h2>Progresso Consolidado</h2>
     <div style="width: 250px; margin: 0 auto;"><canvas id="chartPizza"></canvas></div>
     <div id="resumo-stats" style="margin-top:2rem; font-size:1.5rem; font-weight:700;"></div>
 </div>
@@ -141,10 +141,14 @@
     const db = { th20: {}, th21: {} };
     const servicos = ["Limpeza", "Compensação Lateral", "Corte", "Aterro"];
     
+    // Configurações Técnicas de Limites
+    const trechosConfig = {
+        th20: { kmIni: 288, kmFim: 302, estIni: 20000, estFim: 21028 },
+        th21: { kmIni: 303, kmFim: 319, estIni: 21029, estFim: 21791 }
+    };
+
     function init() {
         ['th20', 'th21'].forEach(th => {
-            // Inicializamos o banco para aceitar as estacas dos KMs 288 a 319 (Estacas 14400 a 15999)
-            // e também os ranges anteriores que você usava (20000 etc)
             const secoes = ["Duplicação", "Marginal Norte", "Marginal Sul"];
             secoes.forEach(sec => { db[th][sec] = [[], [], [], []]; });
         });
@@ -185,22 +189,29 @@
         container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
         container.innerHTML = '';
 
-        // LOOP KM 288 AO 319
-        for(let km = 288; km <= 319; km++) {
-            const estacaInicialKM = km * 50;
-            const estacaFinalKM = (km * 50) + 49;
+        const config = trechosConfig[trechoAtivo];
+
+        // GERA CARDS APENAS DO TRECHO ATIVO
+        for(let km = config.kmIni; km <= config.kmFim; km++) {
+            // Lógica: 50 estacas por KM. 
+            // Para o TH20 (começa no 288), o km 288 deve mostrar as primeiras 50 estacas a partir da 20.000
+            const offsetKM = km - config.kmIni;
+            const estKM_Ini = config.estIni + (offsetKM * 50);
+            const estKM_Fim = Math.min(estKM_Ini + 49, config.estFim);
+
+            if (estKM_Ini > config.estFim) break;
 
             const card = document.createElement('div');
             card.className = 'km-card';
             card.innerHTML = `
                 <div class="km-header">
                     <span class="km-title">KM ${km}</span>
-                    <span class="km-range">Estacas ${estacaInicialKM} a ${estacaFinalKM}</span>
+                    <span class="km-range">Estacas ${estKM_Ini} a ${estKM_Fim}</span>
                 </div>
                 <canvas id="canvas-km-${km}"></canvas>
             `;
             container.appendChild(card);
-            desenharKM(km, estacaInicialKM, estacaFinalKM);
+            desenharKM(km, estKM_Ini, estKM_Fim);
         }
     }
 
@@ -210,46 +221,42 @@
         canvas.width = 1100; canvas.height = 280;
 
         const mEsq = 220, mTopo = 50, areaW = canvas.width - mEsq - 50;
-        const totalEstacasKM = 50;
+        const totalEstacasNoKM = estMax - estMin + 1;
 
         servicos.forEach((label, i) => {
             if(tabAtiva === 'Aterro' && i !== 3) return;
             const y = mTopo + (tabAtiva === 'Aterro' ? 80 : i * 50);
             
-            // Calculo % do KM
             let exec = 0;
             for(let e = estMin; e <= estMax; e++) {
                 const c = db[trechoAtivo][secaoAtiva][i][e];
                 if(c === '#10b981' || c === '#3b82f6') exec++;
             }
-            const p = ((exec/50)*100).toFixed(0);
+            const p = ((exec / totalEstacasNoKM) * 100).toFixed(0);
 
-            // Labels
             ctx.fillStyle = "#f8fafc"; ctx.font = "bold 12px Inter";
             ctx.fillText(label, 20, y + 20);
             ctx.fillStyle = "#10b981"; ctx.fillText(`${p}%`, 180, y + 20);
 
-            // Background da trilha
             ctx.fillStyle = "#0f172a";
             ctx.fillRect(mEsq, y, areaW, 30);
 
-            // Pintura das Estacas
-            const wEst = areaW / totalEstacasKM;
+            const wEst = areaW / totalEstacasNoKM;
             for(let e = estMin; e <= estMax; e++) {
                 const cor = db[trechoAtivo][secaoAtiva][i][e];
                 if(cor && cor !== "#ffffff") {
-                    const x = mEsq + ((e - estMin) / totalEstacasKM) * areaW;
+                    const x = mEsq + ((e - estMin) / totalEstacasNoKM) * areaW;
                     ctx.fillStyle = cor;
                     ctx.fillRect(x, y, Math.ceil(wEst), 30);
                 }
             }
         });
 
-        // Régua de Estacas (Números embaixo do gráfico)
+        // Régua de Estacas
         ctx.fillStyle = "#94a3b8"; ctx.font = "10px Inter";
         for(let e = estMin; e <= estMax; e++) {
-            if(e % 5 === 0) { // Mostra número a cada 5 estacas
-                const x = mEsq + ((e - estMin) / totalEstacasKM) * areaW;
+            if(e % 5 === 0 || e === estMin || e === estMax) {
+                const x = mEsq + ((e - estMin) / totalEstacasNoKM) * areaW;
                 ctx.fillText(e, x - 10, canvas.height - 15);
                 ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
                 ctx.beginPath(); ctx.moveTo(x, mTopo); ctx.lineTo(x, canvas.height - 35); ctx.stroke();
@@ -258,13 +265,16 @@
     }
 
     function gerarResumo() {
-        let ex = 0, tot = 1; // tot=1 para evitar divisão por zero inicial
-        const kmTotal = (319 - 288 + 1) * 50 * 4; 
-        tot = kmTotal;
-
+        let ex = 0, tot = 0;
         ['th20','th21'].forEach(th => {
+            const config = trechosConfig[th];
+            const estacasNoTrecho = (config.estFim - config.estIni + 1) * 4;
+            tot += estacasNoTrecho;
+            
             Object.keys(db[th]).forEach(sec => {
-                db[th][sec].forEach(srv => srv.forEach(c => { if(c === '#10b981' || c === '#3b82f6') ex++; }));
+                db[th][sec].forEach(srv => srv.forEach(c => { 
+                    if(c === '#10b981' || c === '#3b82f6') ex++; 
+                }));
             });
         });
 
