@@ -11,7 +11,7 @@
         :root {
             --bg-body: #0f172a; --bg-card: #1e293b; --primary: #10b981;
             --secondary: #3b82f6; --warning: #f59e0b; --text-main: #f8fafc;
-            --text-dim: #94a3b8; --border: #334155; --cft-color: #a855f7;
+            --text-dim: #94a3b8; --border: #334155;
         }
         body { background-color: var(--bg-body); color: var(--text-main); font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
         header { width: 100%; padding: 1.2rem 0; text-align: center; background: linear-gradient(to bottom, #1e293b, #0f172a); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
@@ -80,19 +80,20 @@
 
 <div id="tela-resumo">
     <h2 style="margin-bottom:2rem;">Progresso Global da Obra</h2>
-    <div style="width: 300px; margin: 0 auto; height: 300px;"><canvas id="chartPizza"></canvas></div>
-    <div id="resumo-stats" style="margin-top:2rem; font-size:2.5rem; font-weight:700;">0%</div>
+    <div style="width: 300px; height: 300px; margin: 0 auto; position: relative;">
+        <canvas id="chartPizza"></canvas>
+    </div>
+    <div id="resumo-stats" style="margin-top:2rem; font-size:3rem; font-weight:800; color:var(--primary);">0%</div>
     <p style="color:var(--text-dim); margin-top: 10px;">Somatório de Executado (Verde + Azul)</p>
 </div>
 
 <script>
-    // --- CONFIGURAÇÃO FIREBASE ---
+    // --- CONFIGURAÇÃO FIREBASE (Substitua pelos seus dados) ---
     const firebaseConfig = {
-        apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0", 
+        apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0",
         authDomain: "obras-th20-th21.firebaseapp.com",
         databaseURL: "https://obras-th20-th21-default-rtdb.firebaseio.com",
         projectId: "obras-th20-th21",
-        storageBucket: "obras-th20-th21.appspot.com",
         appId: "1:215276987705:web:4c85fad756b3a3a2a174e8"
     };
 
@@ -100,9 +101,8 @@
     const database = firebase.database();
 
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
-    let db = { th20: {}, th21: {} };
+    let db = {}; 
     
-    // ORDEM DAS CAMADAS: CFT no topo, Camadas descendo até o Fundo
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
         Aterro: ["3ª Camada CFT", "2ª Camada CFT", "1ª Camada CFT", ...Array.from({length: 20}, (_, i) => `${20-i}ª Camada`), "Fundo"],
@@ -119,8 +119,9 @@
 
     function escutarNuvem() {
         database.ref('obra_v3').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) { db = data; render(); }
+            const val = snapshot.val();
+            db = val || {};
+            render();
             document.getElementById('status-cloud').innerText = "☁️ Sincronizado";
         });
     }
@@ -148,7 +149,6 @@
                 let temAlguma = false;
                 for(let c in camadas) { if(camadas[c] && camadas[c][i] && camadas[c][i] !== "#ffffff") temAlguma = true; }
                 let final = temAlguma ? "#f59e0b" : "#ffffff";
-                // Se o CFT estiver concluído (índices 0, 1 ou 2), marca verde na Principal
                 if(camadas[0] && (camadas[0][i] === "#10b981" || camadas[0][i] === "#3b82f6")) final = "#10b981";
                 db[trechoAtivo][secaoAtiva]['Principal'][3][i] = final;
             }
@@ -216,7 +216,7 @@
             ctx.fillStyle = "#0f172a"; ctx.fillRect(mEsq, y, areaW, rowH - 4);
             const wEst = areaW / (estMax - estMin + 1);
             for(let e = estMin; e <= estMax; e++) {
-                const cor = (db[trechoAtivo] && db[trechoAtivo][secaoAtiva] && db[trechoAtivo][secaoAtiva][tabAtiva] && db[trechoAtivo][secaoAtiva][tabAtiva][i]) ? db[trechoAtivo][secaoAtiva][tabAtiva][i][e] : null;
+                const cor = (db[trechoAtivo]?.[secaoAtiva]?.[tabAtiva]?.[i]) ? db[trechoAtivo][secaoAtiva][tabAtiva][i][e] : null;
                 if(cor && cor !== "#ffffff") { ctx.fillStyle = cor; ctx.fillRect(mEsq + ((e - estMin) * wEst), y, Math.ceil(wEst), rowH - 4); }
             }
         });
@@ -226,19 +226,24 @@
         let executado = 0, total = 0;
         const coresOk = ['#10b981', '#3b82f6'];
 
-        // Processa os dados locais do objeto 'db'
         ['th20', 'th21'].forEach(th => {
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if(aba === 'Aterro') return; // Usa a Principal para contar o progresso de terraplanagem sem duplicar
+                    if(aba === 'Aterro') return; // Usa a Principal para terraplanagem
+                    
                     const servicos = abasConfig[aba];
                     const numEstacas = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
                     total += servicos.length * numEstacas;
                     
-                    if(db[th] && db[th][sec] && db[th][sec][aba]) {
-                        Object.keys(db[th][sec][aba]).forEach(srvIdx => {
-                            const estacas = db[th][sec][aba][srvIdx];
-                            if(estacas) estacas.forEach(cor => { if(coresOk.includes(cor)) executado++; });
+                    // Cálculo seguro
+                    const srvsAba = db[th]?.[sec]?.[aba];
+                    if(srvsAba) {
+                        Object.values(srvsAba).forEach(estacasObj => {
+                            if(estacasObj) {
+                                estacasObj.forEach(cor => {
+                                    if(coresOk.includes(cor)) executado++;
+                                });
+                            }
                         });
                     }
                 });
@@ -247,7 +252,6 @@
 
         const p = total > 0 ? ((executado/total)*100).toFixed(2) : 0;
         document.getElementById('resumo-stats').innerText = `${p}%`;
-        document.getElementById('resumo-stats').style.color = "var(--primary)";
 
         const ctx = document.getElementById('chartPizza').getContext('2d');
         if(window.pCh) window.pCh.destroy();
