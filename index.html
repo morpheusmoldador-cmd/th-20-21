@@ -16,7 +16,6 @@
         body { background-color: var(--bg-body); color: var(--text-main); font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
         header { width: 100%; padding: 1.2rem 0; text-align: center; background: linear-gradient(to bottom, #1e293b, #0f172a); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
         
-        /* Tooltip Style */
         #tooltip { position: absolute; background: rgba(15, 23, 42, 0.95); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid var(--primary); pointer-events: none; display: none; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 
         .nav-container { width: 95%; max-width: 1300px; margin: 1rem 0; display: flex; flex-direction: column; gap: 0.8rem; }
@@ -36,7 +35,8 @@
         .km-card { background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border); padding: 1.2rem; }
         .km-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 0.8rem; }
         
-        #tela-resumo { display: none; width: 90%; max-width: 600px; text-align: center; background: var(--bg-card); padding: 3rem; border-radius: 20px; border: 1px solid var(--border); margin: 2rem 0; }
+        #tela-resumo { display: none; width: 95%; max-width: 600px; text-align: center; background: var(--bg-card); padding: 2rem; border-radius: 20px; border: 1px solid var(--border); margin: 2rem auto; }
+        .chart-container { position: relative; height: 300px; width: 300px; margin: 0 auto; }
         .sync-status { font-size: 10px; color: var(--primary); position: absolute; right: 20px; top: 20px; font-weight: bold; }
     </style>
 </head>
@@ -87,16 +87,16 @@
 <div id="tela-graficos" class="container-quilometros"></div>
 
 <div id="tela-resumo">
-    <h2 style="margin-bottom:2rem;">Progresso Global da Obra</h2>
-    <div style="width: 300px; height: 300px; margin: 0 auto;">
+    <h2 style="margin-bottom:1.5rem;">Progresso Global da Obra</h2>
+    <div class="chart-container">
         <canvas id="chartPizza"></canvas>
     </div>
-    <div id="resumo-stats" style="margin-top:2rem; font-size:3rem; font-weight:800; color:var(--primary);">0%</div>
-    <p style="color:var(--text-dim); margin-top: 10px;">Somatório de Executado (Mês + Anterior)</p>
+    <div id="resumo-stats" style="margin-top:1.5rem; font-size:3.5rem; font-weight:800; color:var(--primary);">0%</div>
+    <p style="color:var(--text-dim); margin-top: 5px;">Total Executado (Verde + Azul)</p>
 </div>
 
 <script>
-    // --- CONFIGURAÇÃO FIREBASE ---
+    // --- FIREBASE CONFIG (INSIRA SEUS DADOS AQUI) ---
     const firebaseConfig = {
           apiKey: "AIzaSyBm5JVG7s3GW3CR72CSxBboNQfglGLoJB0",
         authDomain: "obras-th20-th21.firebaseapp.com",
@@ -113,7 +113,8 @@
 
     let tabAtiva = 'Principal', trechoAtivo = 'th20', secaoAtiva = 'Duplicação';
     let db = {}; 
-    
+    let chartInstance = null; // Para controlar o gráfico de pizza
+
     const abasConfig = {
         Principal: ["Limpeza", "Compensação Lateral", "Corte", "Aterro"],
         Aterro: ["3ª Camada CFT", "2ª Camada CFT", "1ª Camada CFT", ...Array.from({length: 20}, (_, i) => `${20-i}ª Camada`), "Fundo"],
@@ -132,8 +133,6 @@
         database.ref('obra_v3').on('value', (snapshot) => {
             db = snapshot.val() || {};
             render();
-            // Calcula o resumo automaticamente toda vez que os dados mudam
-            gerarResumo(); 
             document.getElementById('status-cloud').innerText = "☁️ Sincronizado";
         });
     }
@@ -193,7 +192,8 @@
 
         if(tabAtiva === 'Resumo') {
             container.style.display = 'none'; painel.style.display = 'none'; resumo.style.display = 'block';
-            gerarResumo(); return;
+            gerarResumo(); 
+            return;
         }
 
         container.style.display = 'grid'; painel.style.display = 'grid'; resumo.style.display = 'none';
@@ -235,29 +235,23 @@
             }
         });
 
-        // --- INTERAÇÃO TOOLTIP ---
         canvas.onmousemove = (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) * (canvas.width / rect.width);
             const y = (e.clientY - rect.top) * (canvas.height / rect.height);
             const tooltip = document.getElementById('tooltip');
-
             if (x > mEsq && x < mEsq + areaW) {
                 const estHover = Math.floor((x - mEsq) / (areaW / (estMax - estMin + 1))) + estMin;
                 const rowHover = Math.floor((y - mTopo) / rowH);
-                
                 if (rowHover >= 0 && rowHover < lista.length) {
                     const labelHover = lista[rowHover];
                     const cor = db[trechoAtivo]?.[secaoAtiva]?.[tabAtiva]?.[rowHover]?.[estHover];
-                    let status = "Pendente";
-                    if(cor === "#10b981") status = "Executado este mês";
-                    else if(cor === "#3b82f6") status = "Executado anteriormente";
-                    else if(cor === "#f59e0b") status = "Em Andamento";
-
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = e.pageX + 10 + 'px';
-                    tooltip.style.top = e.pageY + 10 + 'px';
-                    tooltip.innerHTML = `<strong>Estaca:</strong> ${estHover}<br><strong>Serviço:</strong> ${labelHover}<br><strong>Status:</strong> ${status}`;
+                    let st = "Pendente";
+                    if(cor === "#10b981") st = "Executado este mês";
+                    else if(cor === "#3b82f6") st = "Anteriormente";
+                    else if(cor === "#f59e0b") st = "Em Andamento";
+                    tooltip.style.display = 'block'; tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY + 10 + 'px';
+                    tooltip.innerHTML = `<strong>Estaca:</strong> ${estHover}<br><strong>Serviço:</strong> ${labelHover}<br><strong>Status:</strong> ${st}`;
                     return;
                 }
             }
@@ -267,23 +261,26 @@
     }
 
     function gerarResumo() {
-        let executado = 0, total = 0;
-        const coresOk = ['#10b981', '#3b82f6'];
+        let executado = 0;
+        let totalEstacasServico = 0;
+        const coresAlvo = ['#10b981', '#3b82f6'];
 
+        // Percorre a estrutura de dados atual (que veio do Firebase)
         ['th20', 'th21'].forEach(th => {
+            const numEstacasTrecho = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
             ["Duplicação", "Marginal Norte", "Marginal Sul"].forEach(sec => {
                 Object.keys(abasConfig).forEach(aba => {
-                    if(aba === 'Aterro') return; 
+                    if(aba === 'Aterro') return; // Evita contagem dupla, foca na aba Principal
                     const servicos = abasConfig[aba];
-                    const numEstacas = trechosConfig[th].estFim - trechosConfig[th].estIni + 1;
-                    total += servicos.length * numEstacas;
+                    totalEstacasServico += (servicos.length * numEstacasTrecho);
                     
-                    const srvsAba = db[th]?.[sec]?.[aba];
-                    if(srvsAba) {
-                        Object.values(srvsAba).forEach(estacasObj => {
-                            if(estacasObj) {
-                                estacasObj.forEach(cor => {
-                                    if(coresOk.includes(cor)) executado++;
+                    const dataAba = db[th]?.[sec]?.[aba];
+                    if(dataAba) {
+                        Object.keys(dataAba).forEach(srvIdx => {
+                            const estacas = dataAba[srvIdx];
+                            if(estacas) {
+                                estacas.forEach(cor => {
+                                    if(coresAlvo.includes(cor)) executado++;
                                 });
                             }
                         });
@@ -292,24 +289,33 @@
             });
         });
 
-        const p = total > 0 ? ((executado/total)*100).toFixed(2) : 0;
-        const statsEl = document.getElementById('resumo-stats');
-        if(statsEl) statsEl.innerText = `${p}%`;
+        const porcentagem = totalEstacasServico > 0 ? ((executado / totalEstacasServico) * 100).toFixed(2) : 0;
+        document.getElementById('resumo-stats').innerText = `${porcentagem}%`;
 
-        const ctx = document.getElementById('chartPizza')?.getContext('2d');
-        if(!ctx) return;
-        if(window.pCh) window.pCh.destroy();
-        window.pCh = new Chart(ctx, {
+        // Renderização do Gráfico
+        const canvasResumo = document.getElementById('chartPizza');
+        if(!canvasResumo) return;
+        const ctx = canvasResumo.getContext('2d');
+
+        if(chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Executado', 'Pendente'],
+                labels: ['Concluído', 'Pendente'],
                 datasets: [{
-                    data: [executado, total - executado],
+                    data: [executado, totalEstacasServico - executado],
                     backgroundColor: ['#10b981', '#1e293b'],
-                    borderColor: '#334155'
+                    borderColor: '#334155',
+                    borderWidth: 2
                 }]
             },
-            options: { cutout: '80%', plugins: { legend: { display: false } }, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '80%',
+                plugins: { legend: { display: false } }
+            }
         });
     }
 
